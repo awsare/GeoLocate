@@ -6,10 +6,9 @@ Requirements:
     pip install kagglehub
 
 Auth:
-    Needs a Kaggle API token. Either:
-      - place kaggle.json in ~/.kaggle/kaggle.json, or
-      - set env vars KAGGLE_USERNAME and KAGGLE_KEY
-    Get a token at https://www.kaggle.com/settings -> API -> Create New Token
+    kagglehub handles this automatically. If it doesn't find credentials
+    (env vars or ~/.kaggle/kaggle.json), it opens a browser for you to log
+    into Kaggle and caches the credentials itself. No manual setup needed.
 """
 
 import glob
