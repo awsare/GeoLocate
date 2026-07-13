@@ -18,3 +18,4 @@ kaggle.json
 # Downloaded dataset / cache
 .cache/
 data/
+!data/manifest.csv
