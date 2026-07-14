@@ -1,6 +1,7 @@
 """
-Filters out countries with too few images and writes a manifest of the
-remaining (filepath, country) pairs for use in model training.
+Filters out countries with too few images, splits the rest into
+train/val/test per country, and writes a manifest of the remaining
+(filepath, country, split) rows for use in model training.
 
 Usage:
     python prepare_dataset.py
@@ -17,6 +18,8 @@ from download_dataset import find_cached_download
 
 MIN_IMAGES_PER_COUNTRY = 100
 MANIFEST_PATH = os.path.join("data", "manifest.csv")
+SPLIT_RATIOS = (0.8, 0.1, 0.1)  # train, val, test
+SPLIT_SEED = 42
 
 
 def find_country_level_dir(dataset_root):
@@ -62,20 +65,53 @@ def build_manifest(country_level_dir):
     return pd.DataFrame(rows)
 
 
+def assign_splits(manifest, seed=SPLIT_SEED, ratios=SPLIT_RATIOS):
+    """Return manifest with a "split" column, stratified per country.
+
+    Splitting within each country (rather than globally) keeps the
+    smallest classes represented in val/test instead of risking a
+    class with 0 images in one of those splits.
+    """
+    train_ratio, val_ratio, _ = ratios
+
+    shuffled = manifest.sample(frac=1, random_state=seed).reset_index(drop=True)
+    group_sizes = shuffled.groupby("country")["country"].transform("size")
+    position = shuffled.groupby("country").cumcount()
+    n_train = (group_sizes * train_ratio).astype(int)
+    n_val = (group_sizes * val_ratio).astype(int)
+
+    split = pd.Series("test", index=shuffled.index)
+    split[position < n_train] = "train"
+    split[(position >= n_train) & (position < n_train + n_val)] = "val"
+    shuffled["split"] = split
+    return shuffled
+
+
 def main():
+    # Reuse the cached dataset if present; otherwise download it.
     dataset_root = find_cached_download()
     if dataset_root is None:
         from download_dataset import main as download_dataset
 
         dataset_root = download_dataset()
 
+    # Locate the per-country folders and build (filepath, country, ...)
+    # rows for countries that clear MIN_IMAGES_PER_COUNTRY.
     country_level_dir = find_country_level_dir(dataset_root)
     manifest = build_manifest(country_level_dir)
+    # Stratify each country's images into train/val/test.
+    manifest = assign_splits(manifest)
 
     counts = manifest["country_image_count"]
     print(f"Images kept:       {len(manifest)}")
     print(f"Class count range: {counts.min()}-{counts.max()}")
 
+    split_counts = manifest["split"].value_counts()
+    print(f"Split sizes:       train={split_counts.get('train', 0)}, "
+          f"val={split_counts.get('val', 0)}, test={split_counts.get('test', 0)}")
+
+    # Write the manifest itself, not the images, so the ~50k images stay
+    # in the kagglehub cache instead of being duplicated on disk.
     os.makedirs(os.path.dirname(MANIFEST_PATH), exist_ok=True)
     manifest.to_csv(MANIFEST_PATH, index=False)
     print(f"Manifest written to {MANIFEST_PATH}")

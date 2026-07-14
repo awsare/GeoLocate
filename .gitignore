@@ -12,6 +12,10 @@ env/
 # Editor
 .vscode/
 
+# Claude
+.claude/
+CLAUDE.md
+
 # Kaggle credentials
 kaggle.json
 
