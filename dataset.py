@@ -26,7 +26,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
 def build_label_map(manifest):
-    """Return a {country: index} mapping, sorted by country name.
+    """Return a {sector: index} mapping, sorted by sector name.
 
     Loads LABEL_MAP_PATH if it already exists so indices stay stable across
     runs (checkpoints/eval depend on fixed indices); otherwise builds it from
@@ -36,8 +36,8 @@ def build_label_map(manifest):
         with open(LABEL_MAP_PATH) as f:
             return json.load(f)
 
-    countries = sorted(manifest["country"].unique())
-    label_map = {country: idx for idx, country in enumerate(countries)}
+    sectors = sorted(manifest["sector"].unique())
+    label_map = {sector: idx for idx, sector in enumerate(sectors)}
 
     os.makedirs(os.path.dirname(LABEL_MAP_PATH), exist_ok=True)
     with open(LABEL_MAP_PATH, "w") as f:
@@ -76,7 +76,7 @@ def build_transforms(split):
 
 
 class GeoLocateDataset(Dataset):
-    """Images + country labels for one split (train/val/test) of the manifest."""
+    """Images + sector labels for one split (train/val/test) of the manifest."""
 
     def __init__(self, split, manifest_path=MANIFEST_PATH, transform=None):
         manifest = pd.read_csv(manifest_path)
@@ -94,7 +94,7 @@ class GeoLocateDataset(Dataset):
         row = self.rows.iloc[idx]
         image = Image.open(row["filepath"]).convert("RGB")
         image = self.transform(image)
-        label = self.label_map[row["country"]]
+        label = self.label_map[row["sector"]]
         return image, label
 
 

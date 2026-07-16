@@ -32,7 +32,8 @@ PRINT_EVERY = 100
 
 class Net(nn.Module):
     """Conv/pool/FC net, same shape as the tutorial's but scaled up for
-    224x224 input (vs. CIFAR's 32x32) and a 56-way (vs. 10-way) output.
+    224x224 input (vs. CIFAR's 32x32) and a num_classes-way (vs. 10-way)
+    output, sized to the active sector count from sectors.py.
     """
 
     def __init__(self, num_classes):
@@ -106,10 +107,10 @@ def evaluate_overall(net, testloader, device):
 
 
 def evaluate_per_class(net, testloader, label_map, device):
-    """Print per-country accuracy of net on testloader."""
-    idx_to_country = {idx: country for country, idx in label_map.items()}
-    correct_pred = {country: 0 for country in label_map}
-    total_pred = {country: 0 for country in label_map}
+    """Print per-sector accuracy of net on testloader."""
+    idx_to_sector = {idx: sector for sector, idx in label_map.items()}
+    correct_pred = {sector: 0 for sector in label_map}
+    total_pred = {sector: 0 for sector in label_map}
 
     with torch.no_grad():
         for data in testloader:
@@ -117,14 +118,14 @@ def evaluate_per_class(net, testloader, label_map, device):
             outputs = net(images)
             _, predictions = torch.max(outputs, 1)
             for label, prediction in zip(labels, predictions):
-                country = idx_to_country[label.item()]
+                sector = idx_to_sector[label.item()]
                 if label == prediction:
-                    correct_pred[country] += 1
-                total_pred[country] += 1
+                    correct_pred[sector] += 1
+                total_pred[sector] += 1
 
-    for country, correct_count in sorted(correct_pred.items()):
-        accuracy = 100 * correct_count / total_pred[country] if total_pred[country] else 0
-        print(f"Accuracy for {country:20s}: {accuracy:.1f} %")
+    for sector, correct_count in sorted(correct_pred.items()):
+        accuracy = 100 * correct_count / total_pred[sector] if total_pred[sector] else 0
+        print(f"Accuracy for {sector:26s}: {accuracy:.1f} %")
 
 
 def main():

@@ -15,8 +15,9 @@ import os
 import pandas as pd
 
 from download_dataset import find_cached_download
+from sectors import get_sector_map
 
-MIN_IMAGES_PER_COUNTRY = 100
+MIN_IMAGES_PER_SECTOR = 50
 MANIFEST_PATH = os.path.join("data", "manifest.csv")
 SPLIT_RATIOS = (0.8, 0.1, 0.1)  # train, val, test
 SPLIT_SEED = 42
@@ -33,50 +34,53 @@ def find_country_level_dir(dataset_root):
 
 
 def build_manifest(country_level_dir):
-    """Return a DataFrame of (filepath, country, country_image_count) rows,
-    limited to countries with at least MIN_IMAGES_PER_COUNTRY images.
+    """Return a DataFrame of (filepath, country, sector) rows for every
+    country folder, then drop whole sectors with fewer than
+    MIN_IMAGES_PER_SECTOR images (rather than dropping individual small
+    countries) so a small country's images survive by joining its
+    neighbors' sector instead of being discarded.
 
-    The manifest points at the existing kagglehub cache so the 
+    The manifest points at the existing kagglehub cache so the
     ~50k images aren't duplicated on disk and the cache stays untouched.
     """
+    sector_map = get_sector_map()
     rows = []
-    kept_countries = 0
-    dropped_countries = 0
 
     for entry in os.scandir(country_level_dir):
         if not entry.is_dir():
             continue
         filenames = os.listdir(entry.path)
-        if len(filenames) < MIN_IMAGES_PER_COUNTRY:
-            dropped_countries += 1
-            continue
-        kept_countries += 1
+        sector = sector_map[entry.name]
         for filename in filenames:
             rows.append(
                 {
                     "filepath": os.path.join(entry.path, filename),
                     "country": entry.name,
-                    "country_image_count": len(filenames),
+                    "sector": sector,
                 }
             )
 
-    print(f"Countries kept:    {kept_countries}")
-    print(f"Countries dropped: {dropped_countries}")
-    return pd.DataFrame(rows)
+    manifest = pd.DataFrame(rows)
+    manifest["sector_image_count"] = manifest.groupby("sector")["sector"].transform("size")
+
+    kept = manifest[manifest["sector_image_count"] >= MIN_IMAGES_PER_SECTOR]
+    print(f"Sectors kept:    {kept['sector'].nunique()}")
+    print(f"Sectors dropped: {manifest['sector'].nunique() - kept['sector'].nunique()}")
+    return kept.reset_index(drop=True)
 
 
 def assign_splits(manifest, seed=SPLIT_SEED, ratios=SPLIT_RATIOS):
-    """Return manifest with a "split" column, stratified per country.
+    """Return manifest with a "split" column, stratified per sector.
 
-    Splitting within each country (rather than globally) keeps the
+    Splitting within each sector (rather than globally) keeps the
     smallest classes represented in val/test instead of risking a
     class with 0 images in one of those splits.
     """
     train_ratio, val_ratio, _ = ratios
 
     shuffled = manifest.sample(frac=1, random_state=seed).reset_index(drop=True)
-    group_sizes = shuffled.groupby("country")["country"].transform("size")
-    position = shuffled.groupby("country").cumcount()
+    group_sizes = shuffled.groupby("sector")["sector"].transform("size")
+    position = shuffled.groupby("sector").cumcount()
     n_train = (group_sizes * train_ratio).astype(int)
     n_val = (group_sizes * val_ratio).astype(int)
 
@@ -95,14 +99,15 @@ def main():
 
         dataset_root = download_dataset()
 
-    # Locate the per-country folders and build (filepath, country, ...)
-    # rows for countries that clear MIN_IMAGES_PER_COUNTRY.
+    # Locate the per-country folders, group them into sectors, and build
+    # (filepath, country, sector, ...) rows for sectors that clear
+    # MIN_IMAGES_PER_SECTOR.
     country_level_dir = find_country_level_dir(dataset_root)
     manifest = build_manifest(country_level_dir)
-    # Stratify each country's images into train/val/test.
+    # Stratify each sector's images into train/val/test.
     manifest = assign_splits(manifest)
 
-    counts = manifest["country_image_count"]
+    counts = manifest["sector_image_count"]
     print(f"Images kept:       {len(manifest)}")
     print(f"Class count range: {counts.min()}-{counts.max()}")
 

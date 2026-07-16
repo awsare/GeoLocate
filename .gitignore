@@ -24,3 +24,8 @@ kaggle.json
 data/*
 !data/manifest.csv
 !data/label_map.json
+
+# Training artifacts
+checkpoints/
+logs/
+reports/
