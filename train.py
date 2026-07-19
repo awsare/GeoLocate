@@ -21,10 +21,12 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 from config import (
     BACKBONE_LEARNING_RATE,
     BATCH_SIZE,
+    BEST_CHECKPOINT_METRIC,
     CHECKPOINT_PATH,
     FINETUNE_HEAD_LEARNING_RATE,
     HEAD_LEARNING_RATE,
     HEAD_WARMUP_EPOCHS,
+    LAST_CHECKPOINT_PATH,
     MANIFEST_PATH,
     MOMENTUM,
     NUM_EPOCHS,
@@ -79,9 +81,54 @@ def build_weighted_sampler(dataset, class_counts):
     )
 
 
-def run_training_epochs(net, trainloader, device, optimizer, criterion, num_epochs, epoch_offset=0):
+def evaluate_accuracy(net, dataloader, device, num_classes):
+    """Return (overall_accuracy, macro_accuracy) for dataloader."""
+    net.eval()
+    correct, total = 0, 0
+    class_correct = torch.zeros(num_classes, dtype=torch.long)
+    class_total = torch.zeros(num_classes, dtype=torch.long)
+
+    with torch.no_grad():
+        for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            predictions = net(inputs).argmax(1)
+
+            correct += (predictions == labels).sum().item()
+            total += labels.size(0)
+
+            for class_idx in range(num_classes):
+                class_mask = labels == class_idx
+                class_count = class_mask.sum().item()
+                if class_count:
+                    class_total[class_idx] += class_count
+                    class_correct[class_idx] += (predictions[class_mask] == class_idx).sum().item()
+
+    if total == 0:
+        raise RuntimeError("Cannot evaluate accuracy on an empty dataloader.")
+
+    overall = 100.0 * correct / total
+    per_class_acc = torch.where(
+        class_total > 0,
+        class_correct.float() / class_total.float(),
+        torch.zeros_like(class_total, dtype=torch.float32),
+    )
+    macro = 100.0 * per_class_acc.mean().item()
+    return overall, macro
+
+
+def run_training_epochs(
+    net,
+    trainloader,
+    device,
+    optimizer,
+    criterion,
+    num_epochs,
+    epoch_offset=0,
+    epoch_end_callback=None,
+):
     """Run one training phase for num_epochs."""
     for phase_epoch in range(num_epochs):
+        net.train()
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             inputs, labels = data[0].to(device), data[1].to(device)
@@ -100,11 +147,49 @@ def run_training_epochs(net, trainloader, device, optimizer, criterion, num_epoc
                 )
                 running_loss = 0.0
 
+        if epoch_end_callback is not None:
+            epoch_end_callback(epoch_offset + phase_epoch + 1)
 
-def train(net, trainloader, device, criterion):
+
+def train(net, trainloader, valloader, device, criterion, best_checkpoint_path, num_classes):
     """Train net with head warmup then full-network fine-tuning."""
     head_epochs = min(HEAD_WARMUP_EPOCHS, NUM_EPOCHS)
     finetune_epochs = max(NUM_EPOCHS - head_epochs, 0)
+    best_state = {"score": float("-inf"), "epoch": None, "overall": None, "macro": None}
+
+    if BEST_CHECKPOINT_METRIC not in {"overall_accuracy", "macro_accuracy"}:
+        raise ValueError(
+            "BEST_CHECKPOINT_METRIC must be 'overall_accuracy' or 'macro_accuracy'. "
+            f"Got: {BEST_CHECKPOINT_METRIC}"
+        )
+
+    def on_epoch_end(epoch_number):
+        overall_acc, macro_acc = evaluate_accuracy(net, valloader, device, num_classes)
+        score = overall_acc if BEST_CHECKPOINT_METRIC == "overall_accuracy" else macro_acc
+        print(
+            f"[val] epoch {epoch_number:02d}: overall={overall_acc:.2f}% "
+            f"macro={macro_acc:.2f}% | selection={BEST_CHECKPOINT_METRIC}={score:.2f}%"
+        )
+
+        if score > best_state["score"]:
+            best_state.update(
+                {
+                    "score": score,
+                    "epoch": epoch_number,
+                    "overall": overall_acc,
+                    "macro": macro_acc,
+                }
+            )
+            try:
+                torch.save(net.state_dict(), best_checkpoint_path)
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Failed to write best checkpoint to {best_checkpoint_path}: {exc}"
+                ) from exc
+            print(
+                f"[val] New best checkpoint at epoch {epoch_number:02d} "
+                f"saved to {best_checkpoint_path}"
+            )
 
     print(f"Phase 1/2: train classifier head for {head_epochs} epoch(s)")
     net.freeze_backbone()
@@ -114,7 +199,15 @@ def train(net, trainloader, device, criterion):
         momentum=MOMENTUM,
         weight_decay=WEIGHT_DECAY,
     )
-    run_training_epochs(net, trainloader, device, head_optimizer, criterion, head_epochs)
+    run_training_epochs(
+        net,
+        trainloader,
+        device,
+        head_optimizer,
+        criterion,
+        head_epochs,
+        epoch_end_callback=on_epoch_end,
+    )
 
     if finetune_epochs > 0:
         print(f"Phase 2/2: fine-tune full network for {finetune_epochs} epoch(s)")
@@ -140,9 +233,11 @@ def train(net, trainloader, device, criterion):
             criterion,
             finetune_epochs,
             epoch_offset=head_epochs,
+            epoch_end_callback=on_epoch_end,
         )
 
     print("Finished Training")
+    return best_state
 
 
 def main():
@@ -155,6 +250,7 @@ def main():
         )
 
     train_dataset = GeoLocateDataset("train")
+    val_dataset = GeoLocateDataset("val")
     if len(train_dataset) == 0:
         raise RuntimeError(
             "Training split is empty. Re-run prepare_dataset.py to regenerate splits."
@@ -180,6 +276,7 @@ def main():
         shuffle=sampler is None,
         sampler=sampler,
     )
+    valloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     num_classes = len(train_dataset.label_map)
     if num_classes < 2:
@@ -195,16 +292,34 @@ def main():
 
     net = Net(num_classes, pretrained=True).to(device)
 
-    train(net, trainloader, device, criterion)
-
     os.makedirs(os.path.dirname(CHECKPOINT_PATH), exist_ok=True)
+    best_state = train(
+        net,
+        trainloader,
+        valloader,
+        device,
+        criterion,
+        CHECKPOINT_PATH,
+        num_classes,
+    )
+
     try:
-        torch.save(net.state_dict(), CHECKPOINT_PATH)
+        torch.save(net.state_dict(), LAST_CHECKPOINT_PATH)
     except OSError as exc:
         raise RuntimeError(
-            f"Failed to write checkpoint to {CHECKPOINT_PATH}: {exc}"
+            f"Failed to write final checkpoint to {LAST_CHECKPOINT_PATH}: {exc}"
         ) from exc
-    print(f"Model saved to {CHECKPOINT_PATH}")
+    print(f"Final-epoch model saved to {LAST_CHECKPOINT_PATH}")
+
+    if best_state["epoch"] is None:
+        raise RuntimeError("No validation checkpoints were saved during training.")
+    print(
+        "Best model: "
+        f"epoch={best_state['epoch']}, "
+        f"overall={best_state['overall']:.2f}%, "
+        f"macro={best_state['macro']:.2f}%"
+    )
+    print(f"Best-checkpoint model saved to {CHECKPOINT_PATH}")
 
 
 if __name__ == "__main__":

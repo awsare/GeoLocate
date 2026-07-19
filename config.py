@@ -32,6 +32,9 @@ LABEL_MAP_PATH = os.path.join(DATA_DIR, "label_map.json")
 # Main checkpoint produced by train.py and consumed by evaluate.py.
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "geolocate_net.pth")
 
+# Optional final-epoch checkpoint for debugging/training analysis.
+LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "geolocate_net_last.pth")
+
 # Smoke-test checkpoint path used for save/load roundtrip checks.
 SMOKE_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "smoke_test.pth")
 
@@ -95,6 +98,13 @@ WEIGHT_DECAY = 1e-4
 
 # Interval (in mini-batches) for printing running loss.
 PRINT_EVERY = 100
+
+# Validation metric used to select the best checkpoint.
+# Supported values: "overall_accuracy", "macro_accuracy".
+# overall_accuracy = total correct / total samples (dominated by large classes).
+# macro_accuracy = average of per-class accuracies (each class weighted equally).
+# Use macro_accuracy when balanced sector performance matters most.
+BEST_CHECKPOINT_METRIC = "macro_accuracy"
 
 
 # =================

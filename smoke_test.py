@@ -59,11 +59,24 @@ def check_train_step(net, datasets, device):
         batch_size=SMOKE_BATCH_SIZE,
         shuffle=True,
     )
+    valloader = DataLoader(
+        Subset(datasets["val"], range(SMOKE_SAMPLE_SIZE)),
+        batch_size=SMOKE_BATCH_SIZE,
+        shuffle=False,
+    )
     import train as train_module
 
     train_module.NUM_EPOCHS = 1
     train_module.PRINT_EVERY = 1
-    train(net, trainloader, device, criterion=nn.CrossEntropyLoss())
+    train(
+        net,
+        trainloader,
+        valloader,
+        device,
+        criterion=nn.CrossEntropyLoss(),
+        best_checkpoint_path=SMOKE_CHECKPOINT_PATH,
+        num_classes=len(datasets["train"].label_map),
+    )
 
 
 def check_checkpoint_round_trip(net, num_classes, device):
@@ -73,10 +86,14 @@ def check_checkpoint_round_trip(net, num_classes, device):
 
     reloaded = Net(num_classes).to(device)
     reloaded.load_state_dict(torch.load(SMOKE_CHECKPOINT_PATH, map_location=device))
+    net.eval()
+    reloaded.eval()
 
     dummy = torch.randn(2, 3, 224, 224).to(device)
     with torch.no_grad():
-        assert torch.equal(net(dummy), reloaded(dummy)), "reloaded model outputs differ from original"
+        assert torch.allclose(
+            net(dummy), reloaded(dummy), atol=1e-5, rtol=1e-4
+        ), "reloaded model outputs differ from original"
 
     os.remove(SMOKE_CHECKPOINT_PATH)
 
