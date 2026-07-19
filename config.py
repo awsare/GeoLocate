@@ -1,0 +1,119 @@
+"""Central configuration for GeoLocate.
+
+Each constant below is intentionally documented so tuning and operational
+choices live in one place.
+"""
+
+import os
+
+# =============================
+# Dataset Source And Label Space
+# =============================
+
+# Kaggle dataset identifier used by download_dataset.py.
+KAGGLE_DATASET = "ubitquitin/geolocation-geoguessr-images-50k"
+
+# Active geographic granularity for sector labels ("continent" or "subregion").
+SECTOR_GRANULARITY = "subregion"
+
+
+# ====================
+# Paths And Artifacts
+# ====================
+
+# Root folders for generated metadata/checkpoints.
+DATA_DIR = "data"
+CHECKPOINT_DIR = "checkpoints"
+
+# Manifest and label map file locations.
+MANIFEST_PATH = os.path.join(DATA_DIR, "manifest.csv")
+LABEL_MAP_PATH = os.path.join(DATA_DIR, "label_map.json")
+
+# Main checkpoint produced by train.py and consumed by evaluate.py.
+CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "geolocate_net.pth")
+
+# Smoke-test checkpoint path used for save/load roundtrip checks.
+SMOKE_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "smoke_test.pth")
+
+
+# ==========================
+# Manifest And Split Policy
+# ==========================
+
+# Minimum number of images required for a sector to be kept in the manifest.
+MIN_IMAGES_PER_SECTOR = 50
+
+# Train/val/test split ratios applied per sector.
+SPLIT_RATIOS = (0.8, 0.1, 0.1)
+
+# Random seed used for deterministic split assignment.
+SPLIT_SEED = 42
+
+# Required schema for data/manifest.csv.
+REQUIRED_COLUMNS = {"filepath", "country", "sector", "split"}
+
+
+# =====================
+# Image Preprocessing
+# =====================
+
+# Input image size expected by the model/transforms.
+IMAGE_SIZE = 224
+
+# ImageNet normalization constants for pretrained ResNet backbones.
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
+
+
+# =========================
+# Training Hyperparameters
+# =========================
+
+# Batch size for train/eval dataloaders.
+BATCH_SIZE = 32
+
+# Total training epochs across both warmup and fine-tuning phases.
+NUM_EPOCHS = 10
+
+# Number of initial epochs that train only the classifier head.
+HEAD_WARMUP_EPOCHS = 3
+
+# Learning rate for classifier-head warmup phase.
+HEAD_LEARNING_RATE = 0.001
+
+# Learning rate for backbone params during full-network fine-tuning.
+BACKBONE_LEARNING_RATE = 0.0001
+
+# Learning rate for classifier head during full-network fine-tuning.
+FINETUNE_HEAD_LEARNING_RATE = 0.0005
+
+# SGD momentum used in both training phases.
+MOMENTUM = 0.9
+
+# L2 regularization weight for optimizer parameter groups.
+WEIGHT_DECAY = 1e-4
+
+# Interval (in mini-batches) for printing running loss.
+PRINT_EVERY = 100
+
+
+# =================
+# Class Balancing
+# =================
+
+# Whether to use inverse-frequency class weights in CrossEntropyLoss.
+USE_CLASS_WEIGHTS = True
+
+# Whether to oversample minority classes via WeightedRandomSampler.
+USE_WEIGHTED_SAMPLER = True
+
+
+# =================
+# Smoke Test Setup
+# =================
+
+# Smoke-test subset size per split (keeps smoke_test.py fast).
+SMOKE_SAMPLE_SIZE = 32
+
+# Batch size used by smoke_test.py.
+SMOKE_BATCH_SIZE = 8

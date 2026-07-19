@@ -10,9 +10,10 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from dataset import GeoLocateDataset, MANIFEST_PATH
+from config import BATCH_SIZE, CHECKPOINT_PATH, MANIFEST_PATH
+from dataset import GeoLocateDataset
 from model import Net
-from train import BATCH_SIZE, CHECKPOINT_PATH, get_device
+from train import get_device
 
 
 def evaluate_overall(net, testloader, device):

@@ -17,13 +17,14 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from prepare_dataset import MANIFEST_PATH
-
-LABEL_MAP_PATH = os.path.join("data", "label_map.json")
-REQUIRED_COLUMNS = {"filepath", "country", "sector", "split"}
-IMAGE_SIZE = 224
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD = [0.229, 0.224, 0.225]
+from config import (
+    IMAGE_SIZE,
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    LABEL_MAP_PATH,
+    MANIFEST_PATH,
+    REQUIRED_COLUMNS,
+)
 
 
 def validate_manifest(manifest_path):

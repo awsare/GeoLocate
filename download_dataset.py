@@ -15,13 +15,13 @@ import glob
 import os
 import kagglehub
 
-DATASET = "ubitquitin/geolocation-geoguessr-images-50k"
+from config import KAGGLE_DATASET
 
 
 def find_cached_download():
     """Return the path to an already-downloaded copy of the dataset, if any."""
     cache_root = os.environ.get("KAGGLEHUB_CACHE", os.path.expanduser("~/.cache/kagglehub"))
-    pattern = os.path.join(cache_root, "datasets", *DATASET.split("/"), "versions", "*")
+    pattern = os.path.join(cache_root, "datasets", *KAGGLE_DATASET.split("/"), "versions", "*")
     versions = [p for p in glob.glob(pattern) if os.path.isdir(p) and os.listdir(p)]
     if not versions:
         return None
@@ -34,8 +34,8 @@ def main():
         print(f"Dataset already downloaded at: {existing}")
         return existing
 
-    print(f"Downloading dataset: {DATASET} ...")
-    root = kagglehub.dataset_download(DATASET)
+    print(f"Downloading dataset: {KAGGLE_DATASET} ...")
+    root = kagglehub.dataset_download(KAGGLE_DATASET)
     if not os.path.isdir(root) or not os.listdir(root):
         raise RuntimeError(
             f"Downloaded path is invalid or empty: {root}. "

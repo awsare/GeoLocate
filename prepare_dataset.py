@@ -14,13 +14,9 @@ import os
 
 import pandas as pd
 
+from config import MANIFEST_PATH, MIN_IMAGES_PER_SECTOR, SPLIT_RATIOS, SPLIT_SEED
 from download_dataset import find_cached_download
 from sectors import get_sector_map
-
-MIN_IMAGES_PER_SECTOR = 50
-MANIFEST_PATH = os.path.join("data", "manifest.csv")
-SPLIT_RATIOS = (0.8, 0.1, 0.1)  # train, val, test
-SPLIT_SEED = 42
 
 
 def find_country_level_dir(dataset_root):

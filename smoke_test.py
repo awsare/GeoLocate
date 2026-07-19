@@ -16,14 +16,11 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 
-from dataset import GeoLocateDataset, MANIFEST_PATH
+from config import MANIFEST_PATH, SMOKE_BATCH_SIZE, SMOKE_CHECKPOINT_PATH, SMOKE_SAMPLE_SIZE
+from dataset import GeoLocateDataset
 from evaluate import evaluate_overall, evaluate_per_class
 from model import Net
 from train import get_device, train
-
-SAMPLE_SIZE = 32
-BATCH_SIZE = 8
-SMOKE_CHECKPOINT_PATH = os.path.join("checkpoints", "smoke_test.pth")
 
 
 def check_manifest():
@@ -40,10 +37,10 @@ def check_dataset():
         assert len(ds) > 0, f"{split} split is empty"
 
     label_map = datasets["train"].label_map
-    loader = DataLoader(Subset(datasets["train"], range(SAMPLE_SIZE)), batch_size=BATCH_SIZE)
+    loader = DataLoader(Subset(datasets["train"], range(SMOKE_SAMPLE_SIZE)), batch_size=SMOKE_BATCH_SIZE)
     images, labels = next(iter(loader))
-    assert images.shape == (BATCH_SIZE, 3, 224, 224), f"unexpected image batch shape {images.shape}"
-    assert labels.shape == (BATCH_SIZE,), f"unexpected label batch shape {labels.shape}"
+    assert images.shape == (SMOKE_BATCH_SIZE, 3, 224, 224), f"unexpected image batch shape {images.shape}"
+    assert labels.shape == (SMOKE_BATCH_SIZE,), f"unexpected label batch shape {labels.shape}"
 
     return datasets, label_map
 
@@ -58,7 +55,9 @@ def check_forward_pass(net, device, num_classes):
 def check_train_step(net, datasets, device):
     """One training epoch over a tiny subset runs without error."""
     trainloader = DataLoader(
-        Subset(datasets["train"], range(SAMPLE_SIZE)), batch_size=BATCH_SIZE, shuffle=True
+        Subset(datasets["train"], range(SMOKE_SAMPLE_SIZE)),
+        batch_size=SMOKE_BATCH_SIZE,
+        shuffle=True,
     )
     import train as train_module
 
@@ -84,7 +83,10 @@ def check_checkpoint_round_trip(net, num_classes, device):
 
 def check_evaluate(net, datasets, label_map, device):
     """Overall and per-sector evaluation run without error on a tiny subset."""
-    testloader = DataLoader(Subset(datasets["test"], range(SAMPLE_SIZE)), batch_size=BATCH_SIZE)
+    testloader = DataLoader(
+        Subset(datasets["test"], range(SMOKE_SAMPLE_SIZE)),
+        batch_size=SMOKE_BATCH_SIZE,
+    )
     evaluate_overall(net, testloader, device)
     evaluate_per_class(net, testloader, label_map, device)
 

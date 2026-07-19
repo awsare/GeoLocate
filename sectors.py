@@ -10,7 +10,7 @@ Switching it (or adding a new mapping to SECTOR_MAPS) is the only change
 needed to use more, smaller sectors or fewer, larger ones.
 """
 
-SECTOR_GRANULARITY = "subregion"  # switch to "continent" for fewer, larger sectors
+from config import SECTOR_GRANULARITY
 
 COUNTRY_TO_CONTINENT = {
     "Aland": "Europe",

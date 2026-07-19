@@ -11,6 +11,13 @@ using the Kaggle dataset
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+All tunable settings live in `config.py`.
+
+- Edit `config.py` to change dataset source, split policy, preprocessing,
+  training hyperparameters, class balancing, and smoke-test behavior.
+
 ## Usage
 
 ```bash
@@ -26,16 +33,24 @@ python smoke_test.py         # quick end-to-end pipeline check on tiny data slic
 
 `download_dataset.py` → `prepare_dataset.py` (using `sectors.py`) → `data/manifest.csv` → `dataset.py` → `model.py` → `train.py` → `checkpoints/geolocate_net.pth` → `evaluate.py`
 
+Config for each stage is sourced from `config.py`.
+
 ## Files
 
 - **`download_dataset.py`** — Downloads the dataset via `kagglehub`, reusing
-  an existing cached download if present (`find_cached_download()`).
+  an existing cached download if present (`find_cached_download()`). Uses
+  `KAGGLE_DATASET` from `config.py`.
+
+- **`config.py`** — Centralized project configuration. Contains grouped,
+  documented constants for dataset source, paths/artifacts,
+  manifest/split policy, image preprocessing, training hyperparameters,
+  class balancing, and smoke test setup.
 
 - **`sectors.py`** — Maps each country to a geographic sector so the model
   classifies by region instead of by individual country, keeping every
   country's images instead of dropping small ones. Two granularities are
-  provided (`continent`, `subregion`); `SECTOR_GRANULARITY` picks the active
-  one.
+  provided (`continent`, `subregion`); active granularity is controlled by
+  `SECTOR_GRANULARITY` in `config.py`.
 
 - **`prepare_dataset.py`** — Builds `data/manifest.csv`: groups countries
   into sectors via `sectors.py`, drops sectors with too few images
@@ -84,21 +99,6 @@ This section tracks intentional project choices and why they were made.
   specific country. This reduces label sparsity and keeps low-image countries
   usable by grouping them with nearby countries.
 
-- **Filter sectors with very low support**
-  `prepare_dataset.py` drops sectors with fewer than
-  `MIN_IMAGES_PER_SECTOR` images. This avoids training classes with almost no
-  signal, which would otherwise add noise and unstable metrics.
-
-- **Split strategy is sector-stratified train/val/test**
-  Splits are assigned within each sector (`SPLIT_RATIOS = 0.8/0.1/0.1`) so
-  minority sectors still appear in val/test and evaluation remains meaningful
-  across classes.
-
-- **Manifest references cached dataset paths**
-  `data/manifest.csv` stores filepaths into the local kagglehub cache instead
-  of copying images into the repo. This avoids duplicating ~50k images, at the
-  cost of needing per-machine manifest regeneration.
-
 - **Model initialization is pretrained ResNet-18**
   The backbone starts from ImageNet features (default), which improves data
   efficiency versus training from scratch and helps minority sectors.
@@ -107,10 +107,15 @@ This section tracks intentional project choices and why they were made.
   Phase 1 trains only the classifier head, then phase 2 unfreezes the
   backbone for end-to-end fine-tuning with differential learning rates. This
   stabilizes optimization after swapping the classifier head.
+  
+- **Split strategy is sector-stratified train/val/test**
+  Splits are assigned within each sector (controlled by `SPLIT_RATIOS` in
+  `config.py`) so minority sectors still appear in val/test and evaluation
+  remains meaningful across classes.
 
 - **Class imbalance is handled with weighted loss (default) and optional oversampling**
   `train.py` computes class counts from the training split and applies
   inverse-frequency class weights in `CrossEntropyLoss` by default
-  (`USE_CLASS_WEIGHTS = True`). Optional `WeightedRandomSampler`
-  (`USE_WEIGHTED_SAMPLER = False` by default) can further increase minority
+  (`USE_CLASS_WEIGHTS` in `config.py`). Optional `WeightedRandomSampler`
+  (`USE_WEIGHTED_SAMPLER` in `config.py`) can further increase minority
   exposure during training when rare sectors underperform.

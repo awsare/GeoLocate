@@ -18,22 +18,23 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
+from config import (
+    BACKBONE_LEARNING_RATE,
+    BATCH_SIZE,
+    CHECKPOINT_PATH,
+    FINETUNE_HEAD_LEARNING_RATE,
+    HEAD_LEARNING_RATE,
+    HEAD_WARMUP_EPOCHS,
+    MANIFEST_PATH,
+    MOMENTUM,
+    NUM_EPOCHS,
+    PRINT_EVERY,
+    USE_CLASS_WEIGHTS,
+    USE_WEIGHTED_SAMPLER,
+    WEIGHT_DECAY,
+)
 from dataset import GeoLocateDataset
 from model import Net
-from prepare_dataset import MANIFEST_PATH
-
-CHECKPOINT_PATH = os.path.join("checkpoints", "geolocate_net.pth")
-BATCH_SIZE = 32
-NUM_EPOCHS = 10
-HEAD_WARMUP_EPOCHS = 3
-HEAD_LEARNING_RATE = 0.001
-BACKBONE_LEARNING_RATE = 0.0001
-FINETUNE_HEAD_LEARNING_RATE = 0.0005
-MOMENTUM = 0.9
-WEIGHT_DECAY = 1e-4
-PRINT_EVERY = 100
-USE_CLASS_WEIGHTS = True
-USE_WEIGHTED_SAMPLER = False
 
 
 def get_device():
