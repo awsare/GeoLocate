@@ -41,7 +41,7 @@ python smoke_test.py         # quick end-to-end pipeline check on tiny data slic
   (`MIN_IMAGES_PER_SECTOR`), and stratifies each sector into train/val/test
   splits. `filepath` points directly into the kagglehub cache, so
   `manifest.csv` isn't portable across machines without re-running this
-  script.
+  script, so it stays local and should be regenerated per machine.
 
 - **`dataset.py`** — `GeoLocateDataset`, a `torch.utils.data.Dataset` that
   reads the manifest and loads/transforms images (224x224, ImageNet
@@ -59,6 +59,6 @@ python smoke_test.py         # quick end-to-end pipeline check on tiny data slic
 - **`exploration.ipynb`** — Dataset exploration of per-country image
   counts and class imbalance.
 
-- **`data/`** — Gitignored except for `data/manifest.csv` and
-  `data/label_map.json`, the only versioned artifacts. Images stay in the
-  kagglehub cache, not in this repo.
+- **`data/`** — Gitignored except for `data/label_map.json`. The generated
+  `manifest.csv` stays local because it contains machine-specific kagglehub
+  cache paths. Images stay in the kagglehub cache, not in this repo.

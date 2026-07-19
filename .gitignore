@@ -22,7 +22,6 @@ kaggle.json
 # Downloaded dataset / cache
 .cache/
 data/*
-!data/manifest.csv
 !data/label_map.json
 
 # Training artifacts
