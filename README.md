@@ -57,7 +57,9 @@ python smoke_test.py         # quick end-to-end pipeline check on tiny data slic
 - **`train.py`** — Trains `Net` with a two-phase schedule:
   phase 1 trains only the classifier head (frozen backbone), then phase 2
   fine-tunes the full network with a lower LR on the backbone and higher LR
-  on the classifier head. Saves `checkpoints/geolocate_net.pth`.
+  on the classifier head. Includes class-balancing options via weighted
+  cross-entropy (`USE_CLASS_WEIGHTS`) and optional minority oversampling
+  (`USE_WEIGHTED_SAMPLER`). Saves `checkpoints/geolocate_net.pth`.
 
 - **`evaluate.py`** — Loads `checkpoints/geolocate_net.pth` and reports
   overall and per-sector test accuracy for the test split.
@@ -105,3 +107,10 @@ This section tracks intentional project choices and why they were made.
   Phase 1 trains only the classifier head, then phase 2 unfreezes the
   backbone for end-to-end fine-tuning with differential learning rates. This
   stabilizes optimization after swapping the classifier head.
+
+- **Class imbalance is handled with weighted loss (default) and optional oversampling**
+  `train.py` computes class counts from the training split and applies
+  inverse-frequency class weights in `CrossEntropyLoss` by default
+  (`USE_CLASS_WEIGHTS = True`). Optional `WeightedRandomSampler`
+  (`USE_WEIGHTED_SAMPLER = False` by default) can further increase minority
+  exposure during training when rare sectors underperform.

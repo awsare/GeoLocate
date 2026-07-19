@@ -16,7 +16,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from dataset import GeoLocateDataset
 from model import Net
@@ -32,6 +32,8 @@ FINETUNE_HEAD_LEARNING_RATE = 0.0005
 MOMENTUM = 0.9
 WEIGHT_DECAY = 1e-4
 PRINT_EVERY = 100
+USE_CLASS_WEIGHTS = True
+USE_WEIGHTED_SAMPLER = False
 
 
 def get_device():
@@ -41,6 +43,39 @@ def get_device():
     if torch.cuda.is_available():
         return torch.device("cuda")
     return torch.device("cpu")
+
+
+def compute_class_counts(dataset):
+    """Return per-class image counts aligned to label indices."""
+    counts = torch.zeros(len(dataset.label_map), dtype=torch.float32)
+    sector_indices = dataset.rows["sector"].map(dataset.label_map)
+    for class_idx, class_count in sector_indices.value_counts().items():
+        counts[int(class_idx)] = float(class_count)
+    return counts
+
+
+def build_class_weights(class_counts):
+    """Return normalized inverse-frequency weights for CrossEntropyLoss."""
+    if torch.any(class_counts <= 0):
+        raise RuntimeError("Class counts must be > 0 to compute class weights.")
+
+    weights = 1.0 / class_counts
+    # Normalize to keep average gradient scale near unweighted loss.
+    weights = weights / weights.mean()
+    return weights
+
+
+def build_weighted_sampler(dataset, class_counts):
+    """Return a sampler that oversamples minority classes."""
+    sample_weights = dataset.rows["sector"].map(
+        lambda sector: 1.0 / float(class_counts[dataset.label_map[sector]])
+    )
+    sample_weights = torch.tensor(sample_weights.to_list(), dtype=torch.double)
+    return WeightedRandomSampler(
+        weights=sample_weights,
+        num_samples=len(sample_weights),
+        replacement=True,
+    )
 
 
 def run_training_epochs(net, trainloader, device, optimizer, criterion, num_epochs, epoch_offset=0):
@@ -65,10 +100,8 @@ def run_training_epochs(net, trainloader, device, optimizer, criterion, num_epoc
                 running_loss = 0.0
 
 
-def train(net, trainloader, device):
+def train(net, trainloader, device, criterion):
     """Train net with head warmup then full-network fine-tuning."""
-    criterion = nn.CrossEntropyLoss()
-
     head_epochs = min(HEAD_WARMUP_EPOCHS, NUM_EPOCHS)
     finetune_epochs = max(NUM_EPOCHS - head_epochs, 0)
 
@@ -125,7 +158,27 @@ def main():
         raise RuntimeError(
             "Training split is empty. Re-run prepare_dataset.py to regenerate splits."
         )
-    trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+    class_counts = compute_class_counts(train_dataset)
+    class_weights = build_class_weights(class_counts)
+
+    print(
+        "Class count range (train split): "
+        f"min={int(class_counts.min().item())}, max={int(class_counts.max().item())}"
+    )
+    print(
+        "Balancing config: "
+        f"USE_CLASS_WEIGHTS={USE_CLASS_WEIGHTS}, "
+        f"USE_WEIGHTED_SAMPLER={USE_WEIGHTED_SAMPLER}"
+    )
+
+    sampler = build_weighted_sampler(train_dataset, class_counts) if USE_WEIGHTED_SAMPLER else None
+    trainloader = DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=sampler is None,
+        sampler=sampler,
+    )
 
     num_classes = len(train_dataset.label_map)
     if num_classes < 2:
@@ -133,9 +186,15 @@ def main():
             "Training requires at least 2 classes. "
             "Adjust sectoring/filtering and rebuild the manifest."
         )
+
+    if USE_CLASS_WEIGHTS:
+        criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+    else:
+        criterion = nn.CrossEntropyLoss()
+
     net = Net(num_classes, pretrained=True).to(device)
 
-    train(net, trainloader, device)
+    train(net, trainloader, device, criterion)
 
     os.makedirs(os.path.dirname(CHECKPOINT_PATH), exist_ok=True)
     try:

@@ -13,6 +13,7 @@ import os
 import sys
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 
 from dataset import GeoLocateDataset, MANIFEST_PATH
@@ -63,7 +64,7 @@ def check_train_step(net, datasets, device):
 
     train_module.NUM_EPOCHS = 1
     train_module.PRINT_EVERY = 1
-    train(net, trainloader, device)
+    train(net, trainloader, device, criterion=nn.CrossEntropyLoss())
 
 
 def check_checkpoint_round_trip(net, num_classes, device):
