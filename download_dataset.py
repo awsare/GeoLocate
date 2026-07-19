@@ -36,6 +36,11 @@ def main():
 
     print(f"Downloading dataset: {DATASET} ...")
     root = kagglehub.dataset_download(DATASET)
+    if not os.path.isdir(root) or not os.listdir(root):
+        raise RuntimeError(
+            f"Downloaded path is invalid or empty: {root}. "
+            "Check Kaggle auth/network and try again."
+        )
     print(f"Dataset downloaded to: {root}")
     return root
 

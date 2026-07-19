@@ -30,7 +30,16 @@ def find_country_level_dir(dataset_root):
     whose name/depth may vary, so find it generically: it's the directory
     in the tree with the most immediate subdirectories.
     """
-    return max(os.walk(dataset_root), key=lambda entry: len(entry[1]))[0]
+    country_level_dir, subdirs = max(
+        ((path, dirs) for path, dirs, _ in os.walk(dataset_root)),
+        key=lambda entry: len(entry[1]),
+    )
+    if not subdirs:
+        raise RuntimeError(
+            f"No country folders found under dataset root: {dataset_root}. "
+            "Re-run download_dataset.py to refresh the Kaggle cache."
+        )
+    return country_level_dir
 
 
 def build_manifest(country_level_dir):
@@ -49,6 +58,11 @@ def build_manifest(country_level_dir):
     for entry in os.scandir(country_level_dir):
         if not entry.is_dir():
             continue
+        if entry.name not in sector_map:
+            raise KeyError(
+                f"Country '{entry.name}' is missing from sectors.py mappings. "
+                "Update sectors.py before preparing the manifest."
+            )
         filenames = os.listdir(entry.path)
         sector = sector_map[entry.name]
         for filename in filenames:
@@ -59,6 +73,12 @@ def build_manifest(country_level_dir):
                     "sector": sector,
                 }
             )
+
+    if not rows:
+        raise RuntimeError(
+            f"No images found under {country_level_dir}. "
+            "Dataset cache appears empty or malformed."
+        )
 
     manifest = pd.DataFrame(rows)
     manifest["sector_image_count"] = manifest.groupby("sector")["sector"].transform("size")
@@ -76,6 +96,12 @@ def assign_splits(manifest, seed=SPLIT_SEED, ratios=SPLIT_RATIOS):
     smallest classes represented in val/test instead of risking a
     class with 0 images in one of those splits.
     """
+    if manifest.empty:
+        raise RuntimeError(
+            "Manifest is empty after sector filtering. "
+            "Lower MIN_IMAGES_PER_SECTOR or verify dataset contents."
+        )
+
     train_ratio, val_ratio, _ = ratios
 
     shuffled = manifest.sample(frac=1, random_state=seed).reset_index(drop=True)
@@ -98,6 +124,11 @@ def main():
         from download_dataset import main as download_dataset
 
         dataset_root = download_dataset()
+    if not os.path.isdir(dataset_root):
+        raise RuntimeError(
+            f"Dataset root does not exist: {dataset_root}. "
+            "Run download_dataset.py first."
+        )
 
     # Locate the per-country folders, group them into sectors, and build
     # (filepath, country, sector, ...) rows for sectors that clear
@@ -106,6 +137,11 @@ def main():
     manifest = build_manifest(country_level_dir)
     # Stratify each sector's images into train/val/test.
     manifest = assign_splits(manifest)
+    if manifest.empty:
+        raise RuntimeError(
+            "No rows left in manifest after splitting. "
+            "Check dataset integrity and filtering thresholds."
+        )
 
     counts = manifest["sector_image_count"]
     print(f"Images kept:       {len(manifest)}")

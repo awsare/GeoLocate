@@ -10,7 +10,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from dataset import GeoLocateDataset
+from dataset import GeoLocateDataset, MANIFEST_PATH
 from train import BATCH_SIZE, CHECKPOINT_PATH, Net, get_device
 
 
@@ -25,6 +25,8 @@ def evaluate_overall(net, testloader, device):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
+    if total == 0:
+        raise RuntimeError("Test split has zero samples; cannot compute accuracy.")
     print(f"Accuracy on test images: {100 * correct / total:.1f} %")
 
 
@@ -53,8 +55,15 @@ def evaluate_per_class(net, testloader, label_map, device):
 def load_checkpoint(checkpoint_path, num_classes, device):
     """Load a saved checkpoint into a fresh Net instance."""
     net = Net(num_classes).to(device)
-    state_dict = torch.load(checkpoint_path, map_location=device)
-    net.load_state_dict(state_dict)
+    try:
+        state_dict = torch.load(checkpoint_path, map_location=device)
+        net.load_state_dict(state_dict)
+    except (RuntimeError, OSError) as exc:
+        raise RuntimeError(
+            "Failed to load checkpoint. It may be corrupt or incompatible "
+            "with the current model/dataset configuration. "
+            f"Checkpoint: {checkpoint_path}. Details: {exc}"
+        ) from exc
     net.eval()
     return net
 
@@ -69,8 +78,17 @@ def main():
             "Run train.py first to create it."
         )
         return
+    if not os.path.exists(MANIFEST_PATH):
+        print(
+            f"{MANIFEST_PATH} not found. Run prepare_dataset.py "
+            "before evaluation."
+        )
+        return
 
     test_dataset = GeoLocateDataset("test")
+    if len(test_dataset) == 0:
+        print("Test split is empty. Re-run prepare_dataset.py to regenerate splits.")
+        return
     testloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     net = load_checkpoint(CHECKPOINT_PATH, len(test_dataset.label_map), device)

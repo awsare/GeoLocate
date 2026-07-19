@@ -21,6 +21,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from dataset import GeoLocateDataset
+from prepare_dataset import MANIFEST_PATH
 
 CHECKPOINT_PATH = os.path.join("checkpoints", "geolocate_net.pth")
 BATCH_SIZE = 32
@@ -96,16 +97,35 @@ def main():
     device = get_device()
     print(f"Using device: {device}")
 
+    if not os.path.exists(MANIFEST_PATH):
+        raise FileNotFoundError(
+            f"{MANIFEST_PATH} not found. Run prepare_dataset.py before training."
+        )
+
     train_dataset = GeoLocateDataset("train")
+    if len(train_dataset) == 0:
+        raise RuntimeError(
+            "Training split is empty. Re-run prepare_dataset.py to regenerate splits."
+        )
     trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     num_classes = len(train_dataset.label_map)
+    if num_classes < 2:
+        raise RuntimeError(
+            "Training requires at least 2 classes. "
+            "Adjust sectoring/filtering and rebuild the manifest."
+        )
     net = Net(num_classes).to(device)
 
     train(net, trainloader, device)
 
     os.makedirs(os.path.dirname(CHECKPOINT_PATH), exist_ok=True)
-    torch.save(net.state_dict(), CHECKPOINT_PATH)
+    try:
+        torch.save(net.state_dict(), CHECKPOINT_PATH)
+    except OSError as exc:
+        raise RuntimeError(
+            f"Failed to write checkpoint to {CHECKPOINT_PATH}: {exc}"
+        ) from exc
     print(f"Model saved to {CHECKPOINT_PATH}")
 
 

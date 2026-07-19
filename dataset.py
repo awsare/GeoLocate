@@ -20,9 +20,29 @@ from torchvision import transforms
 from prepare_dataset import MANIFEST_PATH
 
 LABEL_MAP_PATH = os.path.join("data", "label_map.json")
+REQUIRED_COLUMNS = {"filepath", "country", "sector", "split"}
 IMAGE_SIZE = 224
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
+
+
+def validate_manifest(manifest_path):
+    """Load and validate manifest schema before dataset construction."""
+    if not os.path.exists(manifest_path):
+        raise FileNotFoundError(
+            f"{manifest_path} not found. Run prepare_dataset.py first."
+        )
+
+    manifest = pd.read_csv(manifest_path)
+    missing = REQUIRED_COLUMNS - set(manifest.columns)
+    if missing:
+        cols = ", ".join(sorted(missing))
+        raise ValueError(f"Manifest is missing required columns: {cols}")
+    if manifest.empty:
+        raise ValueError(
+            f"{manifest_path} has no rows. Re-run prepare_dataset.py."
+        )
+    return manifest
 
 
 def build_label_map(manifest):
@@ -79,12 +99,27 @@ class GeoLocateDataset(Dataset):
     """Images + sector labels for one split (train/val/test) of the manifest."""
 
     def __init__(self, split, manifest_path=MANIFEST_PATH, transform=None):
-        manifest = pd.read_csv(manifest_path)
+        if split not in {"train", "val", "test"}:
+            raise ValueError(f"Invalid split '{split}'. Expected train/val/test.")
+
+        manifest = validate_manifest(manifest_path)
         # Build the label map from the full manifest, not the filtered split,
         # so train/val/test datasets always agree on indices even if a rare
         # country is missing from one split.
         self.label_map = build_label_map(manifest)
+        missing_sectors = set(manifest["sector"].unique()) - set(self.label_map)
+        if missing_sectors:
+            sector_names = ", ".join(sorted(missing_sectors))
+            raise ValueError(
+                "label_map.json is out of sync with the manifest. "
+                f"Missing sectors: {sector_names}. Delete {LABEL_MAP_PATH} and retry."
+            )
         self.rows = manifest[manifest["split"] == split].reset_index(drop=True)
+        if self.rows.empty:
+            raise ValueError(
+                f"Manifest contains no rows for split '{split}'. "
+                "Re-run prepare_dataset.py."
+            )
         self.transform = transform if transform is not None else build_transforms(split)
 
     def __len__(self):
