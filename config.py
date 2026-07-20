@@ -14,7 +14,7 @@ import os
 KAGGLE_DATASET = "ubitquitin/geolocation-geoguessr-images-50k"
 
 # Active geographic granularity for sector labels ("continent" or "subregion").
-SECTOR_GRANULARITY = "subregion"
+SECTOR_GRANULARITY = "continent"
 
 
 # ====================
@@ -112,7 +112,7 @@ BEST_CHECKPOINT_METRIC = "macro_accuracy"
 # =================
 
 # Whether to use inverse-frequency class weights in CrossEntropyLoss.
-USE_CLASS_WEIGHTS = True
+USE_CLASS_WEIGHTS = False
 
 # Whether to oversample minority classes via WeightedRandomSampler.
 USE_WEIGHTED_SAMPLER = True

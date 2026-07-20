@@ -24,7 +24,33 @@ from config import (
     LABEL_MAP_PATH,
     MANIFEST_PATH,
     REQUIRED_COLUMNS,
+    SECTOR_GRANULARITY,
 )
+from sectors import SECTOR_MAPS
+
+
+def _build_all_label_maps():
+    """Build {granularity: {sector: index}} for all known granularities."""
+    all_maps = {}
+    for granularity, country_to_sector in SECTOR_MAPS.items():
+        sectors = sorted(set(country_to_sector.values()))
+        all_maps[granularity] = {sector: idx for idx, sector in enumerate(sectors)}
+    return all_maps
+
+
+def _build_active_label_map(manifest):
+    """Build active {sector: index} mapping from sectors present in manifest."""
+    sectors = sorted(manifest["sector"].unique())
+    return {sector: idx for idx, sector in enumerate(sectors)}
+
+
+def _is_flat_label_map(payload):
+    """Return True if payload is the legacy single-map format."""
+    return (
+        isinstance(payload, dict)
+        and payload
+        and all(isinstance(k, str) and isinstance(v, int) for k, v in payload.items())
+    )
 
 
 def validate_manifest(manifest_path):
@@ -49,21 +75,60 @@ def validate_manifest(manifest_path):
 def build_label_map(manifest):
     """Return a {sector: index} mapping, sorted by sector name.
 
-    Loads LABEL_MAP_PATH if it already exists so indices stay stable across
-    runs (checkpoints/eval depend on fixed indices); otherwise builds it from
-    the full manifest and writes it out.
+    LABEL_MAP_PATH now stores mappings for both granularities:
+    {
+      "continent": {...},
+      "subregion": {...}
+    }
+
+    The active map is selected by SECTOR_GRANULARITY. Legacy single-map files
+    are migrated in place to the new multi-granularity format.
     """
+    all_label_maps = _build_all_label_maps()
+    active_label_map = _build_active_label_map(manifest)
+
     if os.path.exists(LABEL_MAP_PATH):
         with open(LABEL_MAP_PATH) as f:
-            return json.load(f)
+            payload = json.load(f)
 
-    sectors = sorted(manifest["sector"].unique())
-    label_map = {sector: idx for idx, sector in enumerate(sectors)}
+        if _is_flat_label_map(payload):
+            # Legacy format: migrate file and use the active granularity map.
+            all_label_maps[SECTOR_GRANULARITY] = active_label_map
+            os.makedirs(os.path.dirname(LABEL_MAP_PATH), exist_ok=True)
+            with open(LABEL_MAP_PATH, "w") as f:
+                json.dump(all_label_maps, f, indent=2)
+            return active_label_map
+
+        if (
+            isinstance(payload, dict)
+            and SECTOR_GRANULARITY in payload
+            and _is_flat_label_map(payload[SECTOR_GRANULARITY])
+        ):
+            payload[SECTOR_GRANULARITY] = active_label_map
+            os.makedirs(os.path.dirname(LABEL_MAP_PATH), exist_ok=True)
+            with open(LABEL_MAP_PATH, "w") as f:
+                json.dump(payload, f, indent=2)
+            return active_label_map
+
+        raise ValueError(
+            f"{LABEL_MAP_PATH} has an unexpected format. Delete it and retry."
+        )
 
     os.makedirs(os.path.dirname(LABEL_MAP_PATH), exist_ok=True)
+    all_label_maps[SECTOR_GRANULARITY] = active_label_map
     with open(LABEL_MAP_PATH, "w") as f:
-        json.dump(label_map, f, indent=2)
-    return label_map
+        json.dump(all_label_maps, f, indent=2)
+
+    active_sectors = set(manifest["sector"].unique())
+    missing_from_active_map = active_sectors - set(active_label_map)
+    if missing_from_active_map:
+        missing_names = ", ".join(sorted(missing_from_active_map))
+        raise ValueError(
+            "Active sector map is missing sectors found in manifest. "
+            f"Granularity: {SECTOR_GRANULARITY}. Missing: {missing_names}."
+        )
+
+    return active_label_map
 
 
 def build_transforms(split):
@@ -113,7 +178,8 @@ class GeoLocateDataset(Dataset):
             sector_names = ", ".join(sorted(missing_sectors))
             raise ValueError(
                 "label_map.json is out of sync with the manifest. "
-                f"Missing sectors: {sector_names}. Delete {LABEL_MAP_PATH} and retry."
+                f"Missing sectors: {sector_names}. Active granularity: {SECTOR_GRANULARITY}. "
+                f"Delete {LABEL_MAP_PATH} and retry."
             )
         self.rows = manifest[manifest["split"] == split].reset_index(drop=True)
         if self.rows.empty:
