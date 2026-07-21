@@ -67,6 +67,10 @@ IMAGE_SIZE = 224
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
+# ResNet backbone variant used by model.py.
+# Supported values: "resnet18", "resnet34", "resnet50".
+BACKBONE_NAME = "resnet34"
+
 
 # =========================
 # Training Hyperparameters
@@ -79,19 +83,19 @@ BATCH_SIZE = 32
 TRAIN_NUM_WORKERS = 4
 
 # Total training epochs across both warmup and fine-tuning phases.
-NUM_EPOCHS = 15
+NUM_EPOCHS = 30
 
 # Number of initial epochs that train only the classifier head.
-HEAD_WARMUP_EPOCHS = 5
+HEAD_WARMUP_EPOCHS = 6
 
 # Learning rate for classifier-head warmup phase.
 HEAD_LEARNING_RATE = 0.001
 
 # Learning rate for backbone params during full-network fine-tuning.
-BACKBONE_LEARNING_RATE = 0.0001
+BACKBONE_LEARNING_RATE = 0.00008
 
 # Learning rate for classifier head during full-network fine-tuning.
-FINETUNE_HEAD_LEARNING_RATE = 0.0005
+FINETUNE_HEAD_LEARNING_RATE = 0.0004
 
 # SGD momentum used in both training phases.
 MOMENTUM = 0.9
@@ -103,7 +107,7 @@ WEIGHT_DECAY = 1e-4
 PRINT_EVERY = 100
 
 # Enable OneCycleLR scheduling (applied separately per training phase).
-USE_ONE_CYCLE_LR = True
+USE_ONE_CYCLE_LR = False
 
 # OneCycleLR shape controls.
 # Fraction of total steps used to increase LR from initial_lr to max_lr.
@@ -129,7 +133,7 @@ BEST_CHECKPOINT_METRIC = "macro_accuracy"
 USE_CLASS_WEIGHTS = True
 
 # Label smoothing applied to CrossEntropyLoss targets.
-LABEL_SMOOTHING = 0.05
+LABEL_SMOOTHING = 0.00
 
 # Whether to oversample minority classes via WeightedRandomSampler.
 USE_WEIGHTED_SAMPLER = False

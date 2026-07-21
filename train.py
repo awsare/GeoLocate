@@ -364,6 +364,7 @@ def main():
         criterion = nn.CrossEntropyLoss(label_smoothing=LABEL_SMOOTHING)
 
     net = Net(num_classes, pretrained=True).to(device)
+    print(f"Model backbone: {net.backbone_name}")
 
     os.makedirs(os.path.dirname(CHECKPOINT_PATH), exist_ok=True)
     best_state = train(
