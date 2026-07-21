@@ -79,10 +79,10 @@ BATCH_SIZE = 32
 TRAIN_NUM_WORKERS = 4
 
 # Total training epochs across both warmup and fine-tuning phases.
-NUM_EPOCHS = 10
+NUM_EPOCHS = 15
 
 # Number of initial epochs that train only the classifier head.
-HEAD_WARMUP_EPOCHS = 3
+HEAD_WARMUP_EPOCHS = 5
 
 # Learning rate for classifier-head warmup phase.
 HEAD_LEARNING_RATE = 0.001

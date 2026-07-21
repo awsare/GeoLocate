@@ -272,6 +272,53 @@ SECTOR_MAPS = {
 }
 
 
+# Approximate geographic centroids (lat, lon) used for distance-aware
+# evaluation. Values are coarse by design and intended for regional scoring,
+# not precise geocoding.
+CONTINENT_CENTROIDS = {
+    "Africa": (1.65, 17.68),
+    "Antarctica": (-82.86, 135.00),
+    "Asia": (34.05, 100.62),
+    "Europe": (54.53, 15.26),
+    "North America": (54.53, -105.26),
+    "Oceania": (-22.74, 140.75),
+    "South America": (-8.78, -55.49),
+}
+
+SUBREGION_CENTROIDS = {
+    "Antarctica": (-82.86, 135.00),
+    "Australia and New Zealand": (-33.86, 144.96),
+    "Caribbean": (18.22, -66.59),
+    "Central America": (15.20, -88.15),
+    "Central Asia": (43.00, 68.00),
+    "Eastern Africa": (-3.37, 36.69),
+    "Eastern Asia": (35.68, 127.00),
+    "Eastern Europe": (50.45, 30.52),
+    "Micronesia": (7.45, 151.84),
+    "Northern Africa": (30.04, 31.24),
+    "Northern America": (44.50, -98.35),
+    "Northern Europe": (59.91, 10.75),
+    "Polynesia": (-17.68, -149.41),
+    "South America": (-15.79, -47.88),
+    "South-eastern Asia": (13.75, 100.50),
+    "Southern Africa": (-26.20, 28.04),
+    "Southern Asia": (28.61, 77.21),
+    "Southern Europe": (41.90, 12.50),
+    "Western Africa": (14.69, -17.45),
+    "Western Asia": (39.93, 32.86),
+    "Western Europe": (48.86, 2.35),
+}
+
+
 def get_sector_map():
     """Return the active {country: sector} mapping for SECTOR_GRANULARITY."""
     return SECTOR_MAPS[SECTOR_GRANULARITY]
+
+
+def get_active_sector_centroids():
+    """Return {sector: (lat, lon)} for the active granularity."""
+    centroid_maps = {
+        "continent": CONTINENT_CENTROIDS,
+        "subregion": SUBREGION_CENTROIDS,
+    }
+    return centroid_maps[SECTOR_GRANULARITY]

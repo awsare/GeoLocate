@@ -6,6 +6,8 @@ Usage:
 """
 
 import os
+import math
+from statistics import median
 
 import matplotlib.pyplot as plt
 import torch
@@ -14,6 +16,7 @@ from torch.utils.data import DataLoader
 from config import BATCH_SIZE, CHECKPOINT_PATH, MANIFEST_PATH, TRAIN_NUM_WORKERS
 from dataset import GeoLocateDataset
 from model import Net
+from sectors import get_active_sector_centroids
 from train import get_device
 
 
@@ -91,6 +94,83 @@ def evaluate_confusion_matrix(net, testloader, label_map, device, output_path):
     print(f"Saved confusion matrix to {output_path}")
 
 
+def haversine_km(lat1, lon1, lat2, lon2):
+    """Return great-circle distance in kilometers between two lat/lon points."""
+    earth_radius_km = 6371.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+
+    a = (
+        math.sin(d_phi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return earth_radius_km * c
+
+
+def evaluate_geographic_distance(net, testloader, label_map, device):
+    """Print distance-aware metrics using sector-centroid great-circle error."""
+    idx_to_sector = {idx: sector for sector, idx in label_map.items()}
+    centroid_map = get_active_sector_centroids()
+    missing = sorted(set(idx_to_sector.values()) - set(centroid_map))
+    if missing:
+        missing_names = ", ".join(missing)
+        raise RuntimeError(
+            "Missing centroid coordinates for sector(s): "
+            f"{missing_names}. Update centroid maps in sectors.py."
+        )
+
+    distances_km = []
+    within_500 = 0
+    within_1000 = 0
+    within_2000 = 0
+    weighted_sum = 0.0
+    weighted_tau_km = 1500.0
+
+    with torch.no_grad():
+        for data in testloader:
+            images, labels = data[0].to(device), data[1].to(device)
+            outputs = net(images)
+            _, predictions = torch.max(outputs, 1)
+
+            for true_label, pred_label in zip(labels.cpu(), predictions.cpu()):
+                true_sector = idx_to_sector[true_label.item()]
+                pred_sector = idx_to_sector[pred_label.item()]
+                true_lat, true_lon = centroid_map[true_sector]
+                pred_lat, pred_lon = centroid_map[pred_sector]
+                distance_km = haversine_km(true_lat, true_lon, pred_lat, pred_lon)
+                distances_km.append(distance_km)
+
+                if distance_km <= 500:
+                    within_500 += 1
+                if distance_km <= 1000:
+                    within_1000 += 1
+                if distance_km <= 2000:
+                    within_2000 += 1
+                weighted_sum += math.exp(-distance_km / weighted_tau_km)
+
+    if not distances_km:
+        raise RuntimeError("No predictions available for geographic distance evaluation.")
+
+    count = len(distances_km)
+    mean_km = sum(distances_km) / count
+    median_km = median(distances_km)
+    weighted_score = weighted_sum / count
+
+    print("Geographic distance metrics (sector-centroid based):")
+    print(f"  Mean error (km):     {mean_km:.1f}")
+    print(f"  Median error (km):   {median_km:.1f}")
+    print(f"  Within 500 km:       {100.0 * within_500 / count:.2f}%")
+    print(f"  Within 1000 km:      {100.0 * within_1000 / count:.2f}%")
+    print(f"  Within 2000 km:      {100.0 * within_2000 / count:.2f}%")
+    print(
+        "  Distance score exp(-d/tau), tau=1500 km: "
+        f"{weighted_score:.4f}"
+    )
+
+
 def load_checkpoint(checkpoint_path, num_classes, device):
     """Load a saved checkpoint into a fresh Net instance."""
     net = Net(num_classes).to(device)
@@ -143,6 +223,7 @@ def main():
 
     evaluate_overall(net, testloader, device)
     evaluate_per_class(net, testloader, test_dataset.label_map, device)
+    evaluate_geographic_distance(net, testloader, test_dataset.label_map, device)
     confusion_matrix_path = os.path.join(
         os.path.dirname(CHECKPOINT_PATH),
         "confusion_matrix.png",
