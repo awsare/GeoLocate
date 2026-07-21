@@ -3,3 +3,4 @@ torchvision==0.28.0
 pandas
 pillow
 kagglehub
+matplotlib

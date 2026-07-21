@@ -7,6 +7,7 @@ Usage:
 
 import os
 
+import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader
 
@@ -52,6 +53,42 @@ def evaluate_per_class(net, testloader, label_map, device):
     for sector, correct_count in sorted(correct_pred.items()):
         accuracy = 100 * correct_count / total_pred[sector] if total_pred[sector] else 0
         print(f"Accuracy for {sector:26s}: {accuracy:.1f} %")
+
+
+def evaluate_confusion_matrix(net, testloader, label_map, device, output_path):
+    """Save a confusion-matrix image for model predictions on testloader."""
+    num_classes = len(label_map)
+    idx_to_sector = {idx: sector for sector, idx in label_map.items()}
+    cm = torch.zeros((num_classes, num_classes), dtype=torch.long)
+
+    with torch.no_grad():
+        for data in testloader:
+            images, labels = data[0].to(device), data[1].to(device)
+            outputs = net(images)
+            _, predictions = torch.max(outputs, 1)
+            for true_label, pred_label in zip(labels.cpu(), predictions.cpu()):
+                cm[true_label.item(), pred_label.item()] += 1
+
+    labels = [idx_to_sector[idx] for idx in range(num_classes)]
+    fig_width = max(8, int(num_classes * 0.8))
+    fig_height = max(6, int(num_classes * 0.7))
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    image = ax.imshow(cm.numpy(), interpolation="nearest", cmap="Blues")
+    fig.colorbar(image, ax=ax)
+
+    ax.set_title("Confusion Matrix")
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_xticks(range(num_classes))
+    ax.set_yticks(range(num_classes))
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_yticklabels(labels)
+    fig.tight_layout()
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+    print(f"Saved confusion matrix to {output_path}")
 
 
 def load_checkpoint(checkpoint_path, num_classes, device):
@@ -106,6 +143,17 @@ def main():
 
     evaluate_overall(net, testloader, device)
     evaluate_per_class(net, testloader, test_dataset.label_map, device)
+    confusion_matrix_path = os.path.join(
+        os.path.dirname(CHECKPOINT_PATH),
+        "confusion_matrix.png",
+    )
+    evaluate_confusion_matrix(
+        net,
+        testloader,
+        test_dataset.label_map,
+        device,
+        confusion_matrix_path,
+    )
 
 
 if __name__ == "__main__":
