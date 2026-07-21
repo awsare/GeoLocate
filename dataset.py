@@ -25,6 +25,7 @@ from config import (
     MANIFEST_PATH,
     REQUIRED_COLUMNS,
     SECTOR_GRANULARITY,
+    TRAIN_NUM_WORKERS,
 )
 from sectors import SECTOR_MAPS
 
@@ -208,7 +209,15 @@ def main():
     for split, ds in datasets.items():
         print(f"{split}: {len(ds)} images")
 
-    loader = DataLoader(datasets["train"], batch_size=8, shuffle=True)
+    loader_kwargs = {"num_workers": TRAIN_NUM_WORKERS}
+    if TRAIN_NUM_WORKERS > 0:
+        loader_kwargs["persistent_workers"] = True
+    loader = DataLoader(
+        datasets["train"],
+        batch_size=8,
+        shuffle=True,
+        **loader_kwargs,
+    )
     images, labels = next(iter(loader))
     print(f"Batch image shape: {tuple(images.shape)}")
     print(f"Batch label shape: {tuple(labels.shape)}")

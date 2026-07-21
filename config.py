@@ -14,7 +14,7 @@ import os
 KAGGLE_DATASET = "ubitquitin/geolocation-geoguessr-images-50k"
 
 # Active geographic granularity for sector labels ("continent" or "subregion").
-SECTOR_GRANULARITY = "continent"
+SECTOR_GRANULARITY = "subregion"
 
 
 # ====================
@@ -75,6 +75,9 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 # Batch size for train/eval dataloaders.
 BATCH_SIZE = 32
 
+# Worker processes used by training/validation dataloaders.
+TRAIN_NUM_WORKERS = 4
+
 # Total training epochs across both warmup and fine-tuning phases.
 NUM_EPOCHS = 10
 
@@ -112,10 +115,10 @@ BEST_CHECKPOINT_METRIC = "macro_accuracy"
 # =================
 
 # Whether to use inverse-frequency class weights in CrossEntropyLoss.
-USE_CLASS_WEIGHTS = False
+USE_CLASS_WEIGHTS = True
 
 # Whether to oversample minority classes via WeightedRandomSampler.
-USE_WEIGHTED_SAMPLER = True
+USE_WEIGHTED_SAMPLER = False
 
 
 # =================

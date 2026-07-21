@@ -31,6 +31,7 @@ from config import (
     MOMENTUM,
     NUM_EPOCHS,
     PRINT_EVERY,
+    TRAIN_NUM_WORKERS,
     USE_CLASS_WEIGHTS,
     USE_WEIGHTED_SAMPLER,
     WEIGHT_DECAY,
@@ -270,13 +271,30 @@ def main():
     )
 
     sampler = build_weighted_sampler(train_dataset, class_counts) if USE_WEIGHTED_SAMPLER else None
+    train_loader_kwargs = {"num_workers": TRAIN_NUM_WORKERS}
+    val_loader_kwargs = {"num_workers": TRAIN_NUM_WORKERS}
+    if TRAIN_NUM_WORKERS > 0:
+        train_loader_kwargs["persistent_workers"] = True
+        val_loader_kwargs["persistent_workers"] = True
+    print(
+        "DataLoader config: "
+        f"num_workers={TRAIN_NUM_WORKERS}, "
+        f"persistent_workers={TRAIN_NUM_WORKERS > 0}"
+    )
+
     trainloader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=sampler is None,
         sampler=sampler,
+        **train_loader_kwargs,
     )
-    valloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    valloader = DataLoader(
+        val_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        **val_loader_kwargs,
+    )
 
     num_classes = len(train_dataset.label_map)
     if num_classes < 2:

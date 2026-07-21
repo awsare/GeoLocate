@@ -10,7 +10,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from config import BATCH_SIZE, CHECKPOINT_PATH, MANIFEST_PATH
+from config import BATCH_SIZE, CHECKPOINT_PATH, MANIFEST_PATH, TRAIN_NUM_WORKERS
 from dataset import GeoLocateDataset
 from model import Net
 from train import get_device
@@ -91,7 +91,15 @@ def main():
     if len(test_dataset) == 0:
         print("Test split is empty. Re-run prepare_dataset.py to regenerate splits.")
         return
-    testloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_loader_kwargs = {"num_workers": TRAIN_NUM_WORKERS}
+    if TRAIN_NUM_WORKERS > 0:
+        test_loader_kwargs["persistent_workers"] = True
+    testloader = DataLoader(
+        test_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        **test_loader_kwargs,
+    )
 
     net = load_checkpoint(CHECKPOINT_PATH, len(test_dataset.label_map), device)
     print(f"Loaded model from {CHECKPOINT_PATH}")

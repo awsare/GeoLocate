@@ -16,7 +16,13 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 
-from config import MANIFEST_PATH, SMOKE_BATCH_SIZE, SMOKE_CHECKPOINT_PATH, SMOKE_SAMPLE_SIZE
+from config import (
+    MANIFEST_PATH,
+    SMOKE_BATCH_SIZE,
+    SMOKE_CHECKPOINT_PATH,
+    SMOKE_SAMPLE_SIZE,
+    TRAIN_NUM_WORKERS,
+)
 from dataset import GeoLocateDataset
 from evaluate import evaluate_overall, evaluate_per_class
 from model import Net
@@ -37,7 +43,14 @@ def check_dataset():
         assert len(ds) > 0, f"{split} split is empty"
 
     label_map = datasets["train"].label_map
-    loader = DataLoader(Subset(datasets["train"], range(SMOKE_SAMPLE_SIZE)), batch_size=SMOKE_BATCH_SIZE)
+    loader_kwargs = {"num_workers": TRAIN_NUM_WORKERS}
+    if TRAIN_NUM_WORKERS > 0:
+        loader_kwargs["persistent_workers"] = True
+    loader = DataLoader(
+        Subset(datasets["train"], range(SMOKE_SAMPLE_SIZE)),
+        batch_size=SMOKE_BATCH_SIZE,
+        **loader_kwargs,
+    )
     images, labels = next(iter(loader))
     assert images.shape == (SMOKE_BATCH_SIZE, 3, 224, 224), f"unexpected image batch shape {images.shape}"
     assert labels.shape == (SMOKE_BATCH_SIZE,), f"unexpected label batch shape {labels.shape}"
@@ -54,15 +67,21 @@ def check_forward_pass(net, device, num_classes):
 
 def check_train_step(net, datasets, device):
     """One training epoch over a tiny subset runs without error."""
+    loader_kwargs = {"num_workers": TRAIN_NUM_WORKERS}
+    if TRAIN_NUM_WORKERS > 0:
+        loader_kwargs["persistent_workers"] = True
+
     trainloader = DataLoader(
         Subset(datasets["train"], range(SMOKE_SAMPLE_SIZE)),
         batch_size=SMOKE_BATCH_SIZE,
         shuffle=True,
+        **loader_kwargs,
     )
     valloader = DataLoader(
         Subset(datasets["val"], range(SMOKE_SAMPLE_SIZE)),
         batch_size=SMOKE_BATCH_SIZE,
         shuffle=False,
+        **loader_kwargs,
     )
     import train as train_module
 
@@ -100,9 +119,13 @@ def check_checkpoint_round_trip(net, num_classes, device):
 
 def check_evaluate(net, datasets, label_map, device):
     """Overall and per-sector evaluation run without error on a tiny subset."""
+    test_loader_kwargs = {"num_workers": TRAIN_NUM_WORKERS}
+    if TRAIN_NUM_WORKERS > 0:
+        test_loader_kwargs["persistent_workers"] = True
     testloader = DataLoader(
         Subset(datasets["test"], range(SMOKE_SAMPLE_SIZE)),
         batch_size=SMOKE_BATCH_SIZE,
+        **test_loader_kwargs,
     )
     evaluate_overall(net, testloader, device)
     evaluate_per_class(net, testloader, label_map, device)
