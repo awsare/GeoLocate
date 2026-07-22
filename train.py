@@ -46,12 +46,12 @@ from model import Net
 
 
 def get_device():
-    """Return the best available torch device: mps > cuda > cpu."""
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    return torch.device("cpu")
+    """Return the CUDA device, raising if no GPU is available."""
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA GPU not available. This training script requires a GPU."
+        )
+    return torch.device("cuda")
 
 
 def compute_class_counts(dataset):
