@@ -67,6 +67,10 @@ IMAGE_SIZE = 224
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
+# ResNet backbone variant used by model.py.
+# Supported values: "resnet18", "resnet34", "resnet50".
+BACKBONE_NAME = "resnet50"
+
 
 # =========================
 # Training Hyperparameters
@@ -79,7 +83,7 @@ BATCH_SIZE = 32
 TRAIN_NUM_WORKERS = 4
 
 # Total training epochs across both warmup and fine-tuning phases.
-NUM_EPOCHS = 15
+NUM_EPOCHS = 40
 
 # Number of initial epochs that train only the classifier head.
 HEAD_WARMUP_EPOCHS = 5
@@ -88,10 +92,10 @@ HEAD_WARMUP_EPOCHS = 5
 HEAD_LEARNING_RATE = 0.001
 
 # Learning rate for backbone params during full-network fine-tuning.
-BACKBONE_LEARNING_RATE = 0.0001
+BACKBONE_LEARNING_RATE = 0.00008
 
 # Learning rate for classifier head during full-network fine-tuning.
-FINETUNE_HEAD_LEARNING_RATE = 0.0005
+FINETUNE_HEAD_LEARNING_RATE = 0.0004
 
 # SGD momentum used in both training phases.
 MOMENTUM = 0.9
@@ -107,11 +111,11 @@ USE_ONE_CYCLE_LR = True
 
 # OneCycleLR shape controls.
 # Fraction of total steps used to increase LR from initial_lr to max_lr.
-ONE_CYCLE_PCT_START = 0.3
+ONE_CYCLE_PCT_START = 0.25
 # initial_lr = max_lr / ONE_CYCLE_DIV_FACTOR
 ONE_CYCLE_DIV_FACTOR = 25.0
 # final_lr = initial_lr / ONE_CYCLE_FINAL_DIV_FACTOR
-ONE_CYCLE_FINAL_DIV_FACTOR = 10000.0
+ONE_CYCLE_FINAL_DIV_FACTOR = 1000.0
 
 # Validation metric used to select the best checkpoint.
 # Supported values: "overall_accuracy", "macro_accuracy".
@@ -129,10 +133,29 @@ BEST_CHECKPOINT_METRIC = "macro_accuracy"
 USE_CLASS_WEIGHTS = True
 
 # Label smoothing applied to CrossEntropyLoss targets.
-LABEL_SMOOTHING = 0.05
+LABEL_SMOOTHING = 0.00
 
 # Whether to oversample minority classes via WeightedRandomSampler.
 USE_WEIGHTED_SAMPLER = False
+
+
+# ==========================
+# Distance-Aware Loss (Optional)
+# ==========================
+
+# If True, train with: total_loss = cross_entropy +
+# DISTANCE_LOSS_WEIGHT * geographic_penalty.
+#
+# The geographic penalty uses sector-centroid distances and encourages the
+# model to assign more probability mass to geographically nearby sectors.
+USE_DISTANCE_LOSS = True
+
+# Weight for the geographic penalty term in the total loss.
+DISTANCE_LOSS_WEIGHT = 0.1
+
+# Temperature (in km) for converting expected distance into a bounded penalty:
+# penalty = 1 - exp(-expected_distance_km / DISTANCE_LOSS_TAU_KM)
+DISTANCE_LOSS_TAU_KM = 1500.0
 
 
 # =================
