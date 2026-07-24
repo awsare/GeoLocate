@@ -1,0 +1,114 @@
+<html>
+    <head>
+        <title>GeoLocate</title>
+        <style>
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                background: #e8eef6;
+                font-family: Arial, sans-serif;
+            }
+
+            .side-panel {
+                width: 15%;
+                min-width: 120px;
+                background: #1f364f;
+            }
+
+            .center-panel {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 40px 20px;
+            }
+
+            .content-card {
+                width: 100%;
+                max-width: 720px;
+                background: #ffffff;
+                border-radius: 24px;
+                padding: 32px;
+                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+            }
+
+            h1,
+            h2 {
+                margin: 0;
+                color: #162339;
+                text-align: center;
+            }
+
+            h2 {
+                margin-top: 32px;
+            }
+
+            p {
+                color: #444d5c;
+                line-height: 1.6;
+                text-align: center;
+            }
+
+            form {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 16px;
+                margin-top: 24px;
+            }
+
+            input[type="file"] {
+                width: 100%;
+                max-width: 400px;
+            }
+
+            button {
+                border: none;
+                border-radius: 10px;
+                background: #1f364f;
+                color: #ffffff;
+                padding: 14px 28px;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: background 0.2s ease;
+            }
+
+            button:hover {
+                background: #304a74;
+            }
+
+            #results {
+                margin-top: 20px;
+                background: #f5f8fc;
+                border: 1px solid #d8e1ef;
+                border-radius: 18px;
+                padding: 24px;
+                min-height: 160px;
+            }
+
+            #results p {
+                text-align: left;
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="side-panel"></div>
+        <main class="center-panel">
+            <section class="content-card">
+                <h1>GeoLocate</h1>
+                <p>Welcome to GeoLocate! This application allows you to upload an image and get its geographical location.</p>
+                <form action="/upload" method="post" enctype="multipart/form-data">
+                    <input type="file" name="image" accept="image/*" required>
+                    <button type="submit">Upload Image</button>
+                </form>
+                <h2>Results</h2>
+                <div id="results">
+                    <p>No results yet. Upload an image to see the closest sectors.</p>
+                </div>
+            </section>
+        </main>
+        <div class="side-panel"></div>
+    </body>
+</html>
