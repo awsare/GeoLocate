@@ -30,7 +30,7 @@ MANIFEST_PATH = os.path.join(DATA_DIR, "manifest.csv")
 LABEL_MAP_PATH = os.path.join(DATA_DIR, "label_map.json")
 
 # Main checkpoint produced by train.py and consumed by evaluate.py.
-CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "geolocate_net.pth")
+CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "final_net.pth")
 
 # Optional final-epoch checkpoint for debugging/training analysis.
 LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "geolocate_net_last.pth")
@@ -69,7 +69,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 # ResNet backbone variant used by model.py.
 # Supported values: "resnet18", "resnet34", "resnet50".
-BACKBONE_NAME = "resnet50"
+BACKBONE_NAME = "resnet34"
 
 
 # =========================
@@ -83,7 +83,7 @@ BATCH_SIZE = 32
 TRAIN_NUM_WORKERS = 4
 
 # Total training epochs across both warmup and fine-tuning phases.
-NUM_EPOCHS = 40
+NUM_EPOCHS = 60
 
 # Number of initial epochs that train only the classifier head.
 HEAD_WARMUP_EPOCHS = 5
@@ -130,13 +130,13 @@ BEST_CHECKPOINT_METRIC = "macro_accuracy"
 # =================
 
 # Whether to use inverse-frequency class weights in CrossEntropyLoss.
-USE_CLASS_WEIGHTS = True
+USE_CLASS_WEIGHTS = False
 
 # Label smoothing applied to CrossEntropyLoss targets.
 LABEL_SMOOTHING = 0.00
 
 # Whether to oversample minority classes via WeightedRandomSampler.
-USE_WEIGHTED_SAMPLER = False
+USE_WEIGHTED_SAMPLER = True
 
 
 # ==========================
@@ -151,7 +151,7 @@ USE_WEIGHTED_SAMPLER = False
 USE_DISTANCE_LOSS = True
 
 # Weight for the geographic penalty term in the total loss.
-DISTANCE_LOSS_WEIGHT = 0.1
+DISTANCE_LOSS_WEIGHT = 0.05
 
 # Temperature (in km) for converting expected distance into a bounded penalty:
 # penalty = 1 - exp(-expected_distance_km / DISTANCE_LOSS_TAU_KM)

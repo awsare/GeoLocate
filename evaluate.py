@@ -201,7 +201,27 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
         "within_4000_pct": 100.0 * within_4000 / count,
         "within_5000_pct": 100.0 * within_5000 / count,
         "weighted_score": weighted_score,
+        "distances_km": distances_km,
     }
+
+
+def save_distance_error_histogram(distances_km, output_path):
+    """Save a histogram of geographic error distances and return output path."""
+    if not distances_km:
+        raise RuntimeError("Cannot save distance histogram for empty distance list.")
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.hist(distances_km, bins=40, color="steelblue", edgecolor="white")
+    ax.set_title("Geographic Error Distance Histogram")
+    ax.set_xlabel("Error distance (km)")
+    ax.set_ylabel("Number of samples")
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+    return output_path
 
 
 def load_checkpoint(checkpoint_path, num_classes, device):
@@ -254,7 +274,7 @@ def main():
     net = load_checkpoint(CHECKPOINT_PATH, len(test_dataset.label_map), device)
     print(f"Loaded model from {CHECKPOINT_PATH}")
 
-    evaluation_steps = tqdm(total=4, desc="Evaluation Progress", unit="stage", position=0)
+    evaluation_steps = tqdm(total=5, desc="Evaluation Progress", unit="stage", position=0)
 
     overall_accuracy = evaluate_overall(net, testloader, device)
     evaluation_steps.update(1)
@@ -263,6 +283,16 @@ def main():
     evaluation_steps.update(1)
 
     geo_metrics = evaluate_geographic_distance(net, testloader, test_dataset.label_map, device)
+    evaluation_steps.update(1)
+
+    distance_histogram_path = os.path.join(
+        os.path.dirname(CHECKPOINT_PATH),
+        "distance_error_histogram.png",
+    )
+    distance_histogram_output = save_distance_error_histogram(
+        geo_metrics["distances_km"],
+        distance_histogram_path,
+    )
     evaluation_steps.update(1)
 
     confusion_matrix_path = os.path.join(
@@ -299,6 +329,7 @@ def main():
         f"{geo_metrics['weighted_score']:.4f}"
     )
     print(f"Saved confusion matrix to {confusion_matrix_output}")
+    print(f"Saved distance histogram to {distance_histogram_output}")
 
 
 if __name__ == "__main__":
