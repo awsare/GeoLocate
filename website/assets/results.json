@@ -1,0 +1,160 @@
+{
+  "project": {
+    "name": "GeoLocate",
+    "dataset": "GeoGuessr images 50k",
+    "classes": 18,
+    "finalModel": "Sectors + ResNet34 + two-stage training + class weights + distance penalty (0.1)",
+    "headline": {
+      "testAccuracy": 61,
+      "distanceScore": 0.6527
+    },
+    "finalPerformance": {
+      "accuracyOnTest": 61,
+      "distanceScore": 0.6527,
+      "meanErrorMiles": 1677.7,
+      "medianErrorMiles": 0.0,
+      "withinMiles": [
+        { "miles": 311, "pct": 60.77 },
+        { "miles": 1243, "pct": 69.36 },
+        { "miles": 1864, "pct": 73.13 },
+        { "miles": 2485, "pct": 74.61 },
+        { "miles": 3107, "pct": 75.56 }
+      ],
+      "strongPerClass": [
+        { "label": "Central Asia", "pct": 75.0 },
+        { "label": "Northern Africa", "pct": 75.0 },
+        { "label": "Eastern Asia", "pct": 72.8 },
+        { "label": "Southern Africa", "pct": 69.2 },
+        { "label": "Australia and New Zealand", "pct": 68.7 },
+        { "label": "Eastern Europe", "pct": 65.6 },
+        { "label": "Northern America", "pct": 65.6 },
+        { "label": "Western Asia", "pct": 64.6 },
+        { "label": "South-eastern Asia", "pct": 64.2 },
+        { "label": "Northern Europe", "pct": 63.9 }
+      ],
+      "note": "Lower-performing classes are intentionally omitted here to keep this section focused on the strongest evidence."
+    }
+  },
+  "experiments": [
+    {
+      "id": "cnn-fc",
+      "order": 1,
+      "name": "CNN + FC",
+      "backbone": "Custom CNN",
+      "changes": ["baseline architecture"],
+      "testAccuracy": 2,
+      "distanceScore": 0.05,
+      "summary": "Initial baseline was heavily underfit for the diversity of scenes.",
+      "tradeoff": "Very simple model, very low geographic signal capture.",
+      "status": "baseline"
+    },
+    {
+      "id": "sectors-cnn-fc",
+      "order": 2,
+      "name": "Sectors + CNN + FC",
+      "backbone": "Custom CNN",
+      "changes": ["country-to-sector labels"],
+      "testAccuracy": 7,
+      "distanceScore": 0.07,
+      "summary": "Switching to sector labels gave an immediate boost by reducing class sparsity.",
+      "tradeoff": "Still bottlenecked by feature quality.",
+      "status": "baseline"
+    },
+    {
+      "id": "sectors-resnet18",
+      "order": 3,
+      "name": "Sectors + ResNet18",
+      "backbone": "ResNet18",
+      "changes": ["pretrained backbone"],
+      "testAccuracy": 29,
+      "distanceScore": 0.21,
+      "summary": "Transfer learning made a large jump in classification quality.",
+      "tradeoff": "Good baseline, but minority sectors remained unstable.",
+      "status": "baseline"
+    },
+    {
+      "id": "resnet18-class-weights",
+      "order": 4,
+      "name": "Sectors + ResNet18 + two-stage training + class weights",
+      "backbone": "ResNet18",
+      "changes": ["two-stage training", "class weights"],
+      "testAccuracy": 51,
+      "distanceScore": 0.54,
+      "summary": "Two-stage fine-tuning and imbalance handling produced a major gain.",
+      "tradeoff": "More moving pieces and tuning complexity.",
+      "status": "improved"
+    },
+    {
+      "id": "resnet18-weighted-sampler",
+      "order": 5,
+      "name": "Sectors + ResNet18 + two-stage training + weighted sampler",
+      "backbone": "ResNet18",
+      "changes": ["two-stage training", "weighted sampler"],
+      "testAccuracy": 49,
+      "distanceScore": 0.5,
+      "summary": "Oversampling helped exposure but did not beat class-weighted loss in this run.",
+      "tradeoff": "Can increase variance when minority classes are very noisy.",
+      "status": "improved"
+    },
+    {
+      "id": "resnet18-onecycle",
+      "order": 6,
+      "name": "Sectors + ResNet18 + two-stage training + class weights + one cycle LR",
+      "backbone": "ResNet18",
+      "changes": ["two-stage training", "class weights", "one-cycle LR"],
+      "testAccuracy": 50,
+      "distanceScore": 0.51,
+      "summary": "One-cycle scheduling converged well but not to the top score for this backbone.",
+      "tradeoff": "Faster training dynamics, slight consistency tradeoff.",
+      "status": "improved"
+    },
+    {
+      "id": "resnet34-class-weights",
+      "order": 7,
+      "name": "Sectors + ResNet34 + two-stage training + class weights",
+      "backbone": "ResNet34",
+      "changes": ["deeper backbone", "two-stage training", "class weights"],
+      "testAccuracy": 60,
+      "distanceScore": 0.62,
+      "summary": "Moving to ResNet34 gave the strongest classification jump.",
+      "tradeoff": "Higher compute cost than ResNet18.",
+      "status": "candidate"
+    },
+    {
+      "id": "resnet34-dist01",
+      "order": 8,
+      "name": "Sectors + ResNet34 + two-stage training + class weights + distance penalty (0.1)",
+      "backbone": "ResNet34",
+      "changes": ["distance-aware loss (0.1)"],
+      "testAccuracy": 61,
+      "distanceScore": 0.6527,
+      "summary": "Distance-aware objective improved geographic quality without dropping test accuracy.",
+      "tradeoff": "Requires careful weighting to avoid over-penalizing uncertain samples.",
+      "status": "final"
+    },
+    {
+      "id": "resnet34-dist02",
+      "order": 9,
+      "name": "Sectors + ResNet34 + two-stage training + class weights + distance penalty (0.2)",
+      "backbone": "ResNet34",
+      "changes": ["distance-aware loss (0.2)"],
+      "testAccuracy": 60,
+      "distanceScore": 0.65,
+      "summary": "A stronger penalty kept similar top-line performance in this report.",
+      "tradeoff": "Can increase optimization sensitivity at higher weights.",
+      "status": "candidate"
+    },
+    {
+      "id": "resnet50-dist01-onecycle",
+      "order": 10,
+      "name": "Sectors + ResNet50 + two-stage training + class weights + distance penalty (0.1) + one cycle LR",
+      "backbone": "ResNet50",
+      "changes": ["deeper backbone", "distance-aware loss (0.1)", "one-cycle LR"],
+      "testAccuracy": 58,
+      "distanceScore": 0.61,
+      "summary": "ResNet50 did not outperform the tuned ResNet34 path in this comparison.",
+      "tradeoff": "More parameters, but lower efficiency-to-score ratio here.",
+      "status": "candidate"
+    }
+  ]
+}

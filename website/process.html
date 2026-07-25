@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoLocate | Process</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/main.css">
+  </head>
+  <body>
+    <header class="top-nav">
+      <a class="brand" href="index.html">GeoLocate Website</a>
+      <nav class="nav-links">
+        <a data-nav href="index.html">Home</a>
+        <a data-nav href="process.html">Process</a>
+        <a data-nav href="results.html">Results</a>
+        <a data-nav href="final-model.html">Final Model</a>
+        <a data-nav href="reproducibility.html">Reproducibility</a>
+      </nav>
+    </header>
+
+    <main class="site-wrap">
+      <section class="section reveal">
+        <h2>Model Evolution Walkthrough</h2>
+        <p>
+          This timeline captures each structure tested, the specific training change introduced,
+          and the practical tradeoff observed in that step.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Experiment Timeline</h2>
+        <div class="timeline" data-timeline></div>
+      </section>
+
+      <section class="section reveal">
+        <h2>Interpretation Notes</h2>
+        <p>
+          Accuracy represents exact sector match. Distance score reflects geographic quality and rewards
+          predictions that are geographically closer to the target region even when not exact.
+        </p>
+      </section>
+
+      <footer>
+        Timeline data is generated from website/assets/results.json.
+      </footer>
+    </main>
+
+    <script src="./js/main.js"></script>
+  </body>
+</html>

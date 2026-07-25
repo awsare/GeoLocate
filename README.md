@@ -29,6 +29,23 @@ python evaluate.py           # load the checkpoint and report test accuracy
 python smoke_test.py         # quick end-to-end pipeline check on tiny data slices
 ```
 
+## Website
+
+Project storytelling site lives in `website/` and is fully static.
+
+- Local preview:
+
+```bash
+cd website
+python -m http.server 8000
+```
+
+- Open `http://localhost:8000` in your browser.
+
+- Deployment:
+  GitHub Actions workflow `.github/workflows/deploy-website.yml` publishes
+  the `website/` folder to GitHub Pages.
+
 ## Data flow
 
 `download_dataset.py` → `prepare_dataset.py` (using `sectors.py`) → `data/manifest.csv` → `dataset.py` → `model.py` → `train.py` → `checkpoints/geolocate_net.pth` → `evaluate.py`
@@ -102,7 +119,7 @@ This section tracks intentional project choices and why they were made.
   specific country. This reduces label sparsity and keeps low-image countries
   usable by grouping them with nearby countries.
 
-- **Model initialization is pretrained ResNet-18**
+- **Model initialization is pretrained ResNet-34**
   The backbone starts from ImageNet features (default), which improves data
   efficiency versus training from scratch and helps minority sectors.
 

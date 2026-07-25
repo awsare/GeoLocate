@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoLocate | Model Story</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/main.css">
+  </head>
+  <body>
+    <header class="top-nav">
+      <a class="brand" href="index.html">GeoLocate Website</a>
+      <nav class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#evolution">Evolution</a>
+        <a href="#performance">Final Performance</a>
+        <a href="#repro">Reproducibility</a>
+      </nav>
+    </header>
+
+    <main class="site-wrap">
+      <section class="hero" data-hero></section>
+
+      <section id="overview" class="section reveal">
+        <h2>Project Intent</h2>
+        <p>
+          GeoLocate predicts geographic sectors from street-view style images. Instead of directly
+          predicting country labels, the system groups countries into regional sectors to reduce label
+          sparsity and improve stability for underrepresented regions. The model is strictly visual and
+          is not specifically engineered to detect text artifacts such as street signs, license plates,
+          or other metadata-like location cues.
+        </p>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-label">Dataset</div>
+            <div class="kpi-value">~50k Images</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Label Space</div>
+            <div class="kpi-value">18 Sectors</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Core Backbone</div>
+            <div class="kpi-value">ResNet Family</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Training Pattern</div>
+            <div class="kpi-value">Two-Stage Fine-Tune</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="evolution" class="section">
+        <h2>Design Process In One View</h2>
+        <p>
+          The model evolved through six main decision gates. Each gate introduced one controlled change,
+          then tracked its effect on test accuracy and geographic quality.
+        </p>
+        <div class="process-grid" data-process-cards></div>
+      </section>
+
+      <section class="section">
+        <h2>Model Structure Walkthrough</h2>
+        <p>Each row is one tested structure from baseline to the final selected model.</p>
+        <div class="timeline" data-timeline></div>
+      </section>
+
+      <section id="performance" class="section reveal">
+        <h2>Final Model Performance</h2>
+        <p>
+          Focused on strong signals: overall test accuracy, geographic error profile, and strongest
+          per-sector accuracies.
+        </p>
+        <div class="final-panel" data-final-model></div>
+        <div class="section-inner" data-final-performance></div>
+      </section>
+
+      <section class="section">
+        <h2>Evaluation Visuals</h2>
+        <div class="image-grid">
+          <figure class="image-card reveal">
+            <img src="./assets/confusion_matrix.png" alt="Confusion matrix for final model across 18 sectors">
+            <figcaption>Confusion matrix of the final model.</figcaption>
+          </figure>
+          <figure class="image-card reveal">
+            <img src="./assets/distance_error_histogram.png" alt="Histogram of geographic error distances in miles">
+            <figcaption>Geographic error distance histogram.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="repro" class="section reveal">
+        <h2>Reproducibility</h2>
+        <div class="callout">
+          download_dataset.py -> prepare_dataset.py -> train.py -> evaluate.py -> evaluate_distance.py
+        </div>
+        <p>To update this website after a new run, only edit website/assets/results.json.</p>
+      </section>
+
+      <p class="section" data-errors></p>
+
+      <footer>
+        Source code and training pipeline are in the repository root. This is a single-page static website in website/.
+      </footer>
+    </main>
+
+    <script src="./js/main.js"></script>
+  </body>
+</html>
