@@ -133,5 +133,5 @@ This section tracks intentional project choices and why they were made.
   Training can optionally add a centroid-distance penalty to cross-entropy:
   `total_loss = CE + DISTANCE_LOSS_WEIGHT * distance_penalty`.
   This is controlled by `USE_DISTANCE_LOSS`, `DISTANCE_LOSS_WEIGHT`, and
-  `DISTANCE_LOSS_TAU_KM` in `config.py`. The penalty is designed to reduce
+  `DISTANCE_LOSS_TAU_MILES` in `config.py`. The penalty is designed to reduce
   geographically severe mistakes while preserving sector classification.

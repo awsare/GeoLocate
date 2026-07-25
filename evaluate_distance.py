@@ -31,10 +31,10 @@ def evaluate_distance_aware_accuracy(net, testloader, label_map, device):
             f"{missing_names}. Update centroid maps in sectors.py."
         )
 
-    distances_km = []
-    within_500 = 0
-    within_1000 = 0
-    within_2000 = 0
+    distances_miles = []
+    within_311 = 0
+    within_621 = 0
+    within_1243 = 0
 
     with torch.no_grad():
         for data in testloader:
@@ -47,29 +47,29 @@ def evaluate_distance_aware_accuracy(net, testloader, label_map, device):
                 pred_sector = idx_to_sector[pred_label.item()]
                 true_lat, true_lon = centroid_map[true_sector]
                 pred_lat, pred_lon = centroid_map[pred_sector]
-                distance_km = haversine_km(true_lat, true_lon, pred_lat, pred_lon)
-                distances_km.append(distance_km)
+                distance_miles = haversine_miles(true_lat, true_lon, pred_lat, pred_lon)
+                distances_miles.append(distance_miles)
 
-                if distance_km <= 500:
-                    within_500 += 1
-                if distance_km <= 1000:
-                    within_1000 += 1
-                if distance_km <= 2000:
-                    within_2000 += 1
+                if distance_miles <= 311:
+                    within_311 += 1
+                if distance_miles <= 621:
+                    within_621 += 1
+                if distance_miles <= 1243:
+                    within_1243 += 1
 
-    if not distances_km:
+    if not distances_miles:
         raise RuntimeError("No predictions available for distance-aware accuracy evaluation.")
 
-    count = len(distances_km)
-    mean_km = sum(distances_km) / count
-    median_km = median(distances_km)
+    count = len(distances_miles)
+    mean_miles = sum(distances_miles) / count
+    median_miles = median(distances_miles)
 
     print("Distance-aware accuracy metrics (sector-centroid based):")
-    print(f"  Mean error (km):     {mean_km:.1f}")
-    print(f"  Median error (km):   {median_km:.1f}")
-    print(f"  Within 500 km:       {100.0 * within_500 / count:.2f}%")
-    print(f"  Within 1000 km:      {100.0 * within_1000 / count:.2f}%")
-    print(f"  Within 2000 km:      {100.0 * within_2000 / count:.2f}%")
+    print(f"  Mean error (miles):  {mean_miles:.1f}")
+    print(f"  Median error (miles):{median_miles:.1f}")
+    print(f"  Within 311 miles:    {100.0 * within_311 / count:.2f}%")
+    print(f"  Within 621 miles:    {100.0 * within_621 / count:.2f}%")
+    print(f"  Within 1243 miles:   {100.0 * within_1243 / count:.2f}%")
 def evaluate_overall(net, testloader, device):
     """Print overall accuracy of net on testloader."""
     correct, total = 0, 0
@@ -144,9 +144,9 @@ def evaluate_confusion_matrix(net, testloader, label_map, device, output_path):
     print(f"Saved confusion matrix to {output_path}")
 
 
-def haversine_km(lat1, lon1, lat2, lon2):
-    """Return great-circle distance in kilometers between two lat/lon points."""
-    earth_radius_km = 6371.0
+def haversine_miles(lat1, lon1, lat2, lon2):
+    """Return great-circle distance in miles between two lat/lon points."""
+    earth_radius_miles = 3958.8
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     d_phi = math.radians(lat2 - lat1)
@@ -157,7 +157,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
         + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return earth_radius_km * c
+    return earth_radius_miles * c
 
 
 def evaluate_geographic_distance(net, testloader, label_map, device):
@@ -172,12 +172,12 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
             f"{missing_names}. Update centroid maps in sectors.py."
         )
 
-    distances_km = []
-    within_500 = 0
-    within_1000 = 0
-    within_2000 = 0
+    distances_miles = []
+    within_311 = 0
+    within_621 = 0
+    within_1243 = 0
     weighted_sum = 0.0
-    weighted_tau_km = 1500.0
+    weighted_tau_miles = 932.0
 
     with torch.no_grad():
         for data in testloader:
@@ -190,33 +190,33 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
                 pred_sector = idx_to_sector[pred_label.item()]
                 true_lat, true_lon = centroid_map[true_sector]
                 pred_lat, pred_lon = centroid_map[pred_sector]
-                distance_km = haversine_km(true_lat, true_lon, pred_lat, pred_lon)
-                distances_km.append(distance_km)
+                distance_miles = haversine_miles(true_lat, true_lon, pred_lat, pred_lon)
+                distances_miles.append(distance_miles)
 
-                if distance_km <= 500:
-                    within_500 += 1
-                if distance_km <= 1000:
-                    within_1000 += 1
-                if distance_km <= 2000:
-                    within_2000 += 1
-                weighted_sum += math.exp(-distance_km / weighted_tau_km)
+                if distance_miles <= 311:
+                    within_311 += 1
+                if distance_miles <= 621:
+                    within_621 += 1
+                if distance_miles <= 1243:
+                    within_1243 += 1
+                weighted_sum += math.exp(-distance_miles / weighted_tau_miles)
 
-    if not distances_km:
+    if not distances_miles:
         raise RuntimeError("No predictions available for geographic distance evaluation.")
 
-    count = len(distances_km)
-    mean_km = sum(distances_km) / count
-    median_km = median(distances_km)
+    count = len(distances_miles)
+    mean_miles = sum(distances_miles) / count
+    median_miles = median(distances_miles)
     weighted_score = weighted_sum / count
 
     print("Geographic distance metrics (sector-centroid based):")
-    print(f"  Mean error (km):     {mean_km:.1f}")
-    print(f"  Median error (km):   {median_km:.1f}")
-    print(f"  Within 500 km:       {100.0 * within_500 / count:.2f}%")
-    print(f"  Within 1000 km:      {100.0 * within_1000 / count:.2f}%")
-    print(f"  Within 2000 km:      {100.0 * within_2000 / count:.2f}%")
+    print(f"  Mean error (miles):  {mean_miles:.1f}")
+    print(f"  Median error (miles):{median_miles:.1f}")
+    print(f"  Within 311 miles:    {100.0 * within_311 / count:.2f}%")
+    print(f"  Within 621 miles:    {100.0 * within_621 / count:.2f}%")
+    print(f"  Within 1243 miles:   {100.0 * within_1243 / count:.2f}%")
     print(
-        "  Distance score exp(-d/tau), tau=1500 km: "
+        "  Distance score exp(-d/tau), tau=932 miles: "
         f"{weighted_score:.4f}"
     )
 

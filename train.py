@@ -42,7 +42,7 @@ from config import (
     USE_CLASS_WEIGHTS,
     USE_WEIGHTED_SAMPLER,
     LABEL_SMOOTHING,
-    DISTANCE_LOSS_TAU_KM,
+    DISTANCE_LOSS_TAU_MILES,
     DISTANCE_LOSS_WEIGHT,
     WEIGHT_DECAY,
     USE_DISTANCE_LOSS,
@@ -94,9 +94,9 @@ def build_weighted_sampler(dataset, class_counts):
     )
 
 
-def haversine_km(lat1, lon1, lat2, lon2):
-    """Return great-circle distance in kilometers between two lat/lon points."""
-    earth_radius_km = 6371.0
+def haversine_miles(lat1, lon1, lat2, lon2):
+    """Return great-circle distance in miles between two lat/lon points."""
+    earth_radius_miles = 3958.8
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     d_phi = math.radians(lat2 - lat1)
@@ -107,11 +107,11 @@ def haversine_km(lat1, lon1, lat2, lon2):
         + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return earth_radius_km * c
+    return earth_radius_miles * c
 
 
-def build_sector_distance_matrix_km(label_map):
-    """Return [num_classes, num_classes] centroid distance matrix in km."""
+def build_sector_distance_matrix_miles(label_map):
+    """Return [num_classes, num_classes] centroid distance matrix in miles."""
     idx_to_sector = {idx: sector for sector, idx in label_map.items()}
     centroid_map = get_active_sector_centroids()
     missing = sorted(set(idx_to_sector.values()) - set(centroid_map))
@@ -130,7 +130,7 @@ def build_sector_distance_matrix_km(label_map):
         for j in range(num_classes):
             sector_j = idx_to_sector[j]
             lat_j, lon_j = centroid_map[sector_j]
-            distances[i, j] = haversine_km(lat_i, lon_i, lat_j, lon_j)
+            distances[i, j] = haversine_miles(lat_i, lon_i, lat_j, lon_j)
     return distances
 
 
@@ -141,9 +141,9 @@ class DistanceAwareCrossEntropyLoss(nn.Module):
         self,
         class_weights=None,
         label_smoothing=0.0,
-        distance_matrix_km=None,
+        distance_matrix_miles=None,
         distance_weight=0.0,
-        distance_tau_km=1500.0,
+        distance_tau_miles=932.0,
     ):
         super().__init__()
         if class_weights is not None:
@@ -151,16 +151,16 @@ class DistanceAwareCrossEntropyLoss(nn.Module):
         else:
             self.class_weights = None
 
-        if distance_matrix_km is not None:
-            self.register_buffer("distance_matrix_km", distance_matrix_km)
+        if distance_matrix_miles is not None:
+            self.register_buffer("distance_matrix_miles", distance_matrix_miles)
         else:
-            self.distance_matrix_km = None
+            self.distance_matrix_miles = None
 
         self.label_smoothing = label_smoothing
         self.distance_weight = float(distance_weight)
-        self.distance_tau_km = float(distance_tau_km)
-        if self.distance_tau_km <= 0:
-            raise ValueError("DISTANCE_LOSS_TAU_KM must be > 0.")
+        self.distance_tau_miles = float(distance_tau_miles)
+        if self.distance_tau_miles <= 0:
+            raise ValueError("DISTANCE_LOSS_TAU_MILES must be > 0.")
 
     def forward(self, logits, labels):
         ce_loss = F.cross_entropy(
@@ -170,14 +170,16 @@ class DistanceAwareCrossEntropyLoss(nn.Module):
             label_smoothing=self.label_smoothing,
         )
 
-        if self.distance_weight <= 0 or self.distance_matrix_km is None:
+        if self.distance_weight <= 0 or self.distance_matrix_miles is None:
             return ce_loss
 
         probs = torch.softmax(logits, dim=1)
         # Gather the distance row for each true label: [batch, num_classes].
-        true_to_all_distances = self.distance_matrix_km[labels]
-        expected_distance_km = (probs * true_to_all_distances).sum(dim=1)
-        distance_penalty = (1.0 - torch.exp(-expected_distance_km / self.distance_tau_km)).mean()
+        true_to_all_distances = self.distance_matrix_miles[labels]
+        expected_distance_miles = (probs * true_to_all_distances).sum(dim=1)
+        distance_penalty = (
+            1.0 - torch.exp(-expected_distance_miles / self.distance_tau_miles)
+        ).mean()
         return ce_loss + self.distance_weight * distance_penalty
 
 
@@ -437,7 +439,7 @@ def main():
         "Distance-loss config: "
         f"USE_DISTANCE_LOSS={USE_DISTANCE_LOSS}, "
         f"DISTANCE_LOSS_WEIGHT={DISTANCE_LOSS_WEIGHT}, "
-        f"DISTANCE_LOSS_TAU_KM={DISTANCE_LOSS_TAU_KM}"
+        f"DISTANCE_LOSS_TAU_MILES={DISTANCE_LOSS_TAU_MILES}"
     )
     print(
         "LR config: "
@@ -481,14 +483,16 @@ def main():
     loss_class_weights = class_weights.to(device) if USE_CLASS_WEIGHTS else None
     loss_distance_matrix = None
     if USE_DISTANCE_LOSS:
-        loss_distance_matrix = build_sector_distance_matrix_km(train_dataset.label_map).to(device)
+        loss_distance_matrix = build_sector_distance_matrix_miles(
+            train_dataset.label_map
+        ).to(device)
 
     criterion = DistanceAwareCrossEntropyLoss(
         class_weights=loss_class_weights,
         label_smoothing=LABEL_SMOOTHING,
-        distance_matrix_km=loss_distance_matrix,
+        distance_matrix_miles=loss_distance_matrix,
         distance_weight=DISTANCE_LOSS_WEIGHT if USE_DISTANCE_LOSS else 0.0,
-        distance_tau_km=DISTANCE_LOSS_TAU_KM,
+        distance_tau_miles=DISTANCE_LOSS_TAU_MILES,
     )
 
     net = Net(num_classes, pretrained=True).to(device)

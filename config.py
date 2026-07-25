@@ -153,9 +153,9 @@ USE_DISTANCE_LOSS = True
 # Weight for the geographic penalty term in the total loss.
 DISTANCE_LOSS_WEIGHT = 0.05
 
-# Temperature (in km) for converting expected distance into a bounded penalty:
-# penalty = 1 - exp(-expected_distance_km / DISTANCE_LOSS_TAU_KM)
-DISTANCE_LOSS_TAU_KM = 1500.0
+# Temperature (in miles) for converting expected distance into a bounded penalty:
+# penalty = 1 - exp(-expected_distance_miles / DISTANCE_LOSS_TAU_MILES)
+DISTANCE_LOSS_TAU_MILES = 932.0
 
 
 # =================

@@ -14,7 +14,13 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from config import BATCH_SIZE, CHECKPOINT_PATH, MANIFEST_PATH, TRAIN_NUM_WORKERS
+from config import (
+    BATCH_SIZE,
+    CHECKPOINT_PATH,
+    DISTANCE_LOSS_TAU_MILES,
+    MANIFEST_PATH,
+    TRAIN_NUM_WORKERS,
+)
 from dataset import GeoLocateDataset
 from model import Net
 from sectors import get_active_sector_centroids
@@ -115,9 +121,9 @@ def evaluate_confusion_matrix(net, testloader, label_map, device, output_path):
     return output_path
 
 
-def haversine_km(lat1, lon1, lat2, lon2):
-    """Return great-circle distance in kilometers between two lat/lon points."""
-    earth_radius_km = 6371.0
+def haversine_miles(lat1, lon1, lat2, lon2):
+    """Return great-circle distance in miles between two lat/lon points."""
+    earth_radius_miles = 3958.8
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     d_phi = math.radians(lat2 - lat1)
@@ -128,7 +134,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
         + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return earth_radius_km * c
+    return earth_radius_miles * c
 
 
 def evaluate_geographic_distance(net, testloader, label_map, device):
@@ -143,14 +149,14 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
             f"{missing_names}. Update centroid maps in sectors.py."
         )
 
-    distances_km = []
-    within_500 = 0
-    within_2000 = 0
-    within_3000 = 0
-    within_4000 = 0
-    within_5000 = 0
+    distances_miles = []
+    within_311 = 0
+    within_1243 = 0
+    within_1864 = 0
+    within_2485 = 0
+    within_3107 = 0
     weighted_sum = 0.0
-    weighted_tau_km = 1500.0
+    weighted_tau_miles = DISTANCE_LOSS_TAU_MILES
 
     with torch.no_grad():
         for data in tqdm(
@@ -169,51 +175,51 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
                 pred_sector = idx_to_sector[pred_label.item()]
                 true_lat, true_lon = centroid_map[true_sector]
                 pred_lat, pred_lon = centroid_map[pred_sector]
-                distance_km = haversine_km(true_lat, true_lon, pred_lat, pred_lon)
-                distances_km.append(distance_km)
+                distance_miles = haversine_miles(true_lat, true_lon, pred_lat, pred_lon)
+                distances_miles.append(distance_miles)
 
-                if distance_km <= 500:
-                    within_500 += 1
-                if distance_km <= 2000:
-                    within_2000 += 1
-                if distance_km <= 3000:
-                    within_3000 += 1
-                if distance_km <= 4000:
-                    within_4000 += 1
-                if distance_km <= 5000:
-                    within_5000 += 1
-                weighted_sum += math.exp(-distance_km / weighted_tau_km)
+                if distance_miles <= 311:
+                    within_311 += 1
+                if distance_miles <= 1243:
+                    within_1243 += 1
+                if distance_miles <= 1864:
+                    within_1864 += 1
+                if distance_miles <= 2485:
+                    within_2485 += 1
+                if distance_miles <= 3107:
+                    within_3107 += 1
+                weighted_sum += math.exp(-distance_miles / weighted_tau_miles)
 
-    if not distances_km:
+    if not distances_miles:
         raise RuntimeError("No predictions available for geographic distance evaluation.")
 
-    count = len(distances_km)
-    mean_km = sum(distances_km) / count
-    median_km = median(distances_km)
+    count = len(distances_miles)
+    mean_miles = sum(distances_miles) / count
+    median_miles = median(distances_miles)
     weighted_score = weighted_sum / count
 
     return {
-        "mean_km": mean_km,
-        "median_km": median_km,
-        "within_500_pct": 100.0 * within_500 / count,
-        "within_2000_pct": 100.0 * within_2000 / count,
-        "within_3000_pct": 100.0 * within_3000 / count,
-        "within_4000_pct": 100.0 * within_4000 / count,
-        "within_5000_pct": 100.0 * within_5000 / count,
+        "mean_miles": mean_miles,
+        "median_miles": median_miles,
+        "within_311_pct": 100.0 * within_311 / count,
+        "within_1243_pct": 100.0 * within_1243 / count,
+        "within_1864_pct": 100.0 * within_1864 / count,
+        "within_2485_pct": 100.0 * within_2485 / count,
+        "within_3107_pct": 100.0 * within_3107 / count,
         "weighted_score": weighted_score,
-        "distances_km": distances_km,
+        "distances_miles": distances_miles,
     }
 
 
-def save_distance_error_histogram(distances_km, output_path):
+def save_distance_error_histogram(distances_miles, output_path):
     """Save a histogram of geographic error distances and return output path."""
-    if not distances_km:
+    if not distances_miles:
         raise RuntimeError("Cannot save distance histogram for empty distance list.")
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.hist(distances_km, bins=40, color="steelblue", edgecolor="white")
+    ax.hist(distances_miles, bins=40, color="steelblue", edgecolor="white")
     ax.set_title("Geographic Error Distance Histogram")
-    ax.set_xlabel("Error distance (km)")
+    ax.set_xlabel("Error distance (miles)")
     ax.set_ylabel("Number of samples")
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
@@ -290,7 +296,7 @@ def main():
         "distance_error_histogram.png",
     )
     distance_histogram_output = save_distance_error_histogram(
-        geo_metrics["distances_km"],
+        geo_metrics["distances_miles"],
         distance_histogram_path,
     )
     evaluation_steps.update(1)
@@ -317,15 +323,15 @@ def main():
         print(f"Accuracy for {sector:26s}: {accuracy:.1f} %")
 
     print("Geographic distance metrics (sector-centroid based):")
-    print(f"  Mean error (km):     {geo_metrics['mean_km']:.1f}")
-    print(f"  Median error (km):   {geo_metrics['median_km']:.1f}")
-    print(f"  Within 500 km:       {geo_metrics['within_500_pct']:.2f}%")
-    print(f"  Within 2000 km:      {geo_metrics['within_2000_pct']:.2f}%")
-    print(f"  Within 3000 km:      {geo_metrics['within_3000_pct']:.2f}%")
-    print(f"  Within 4000 km:      {geo_metrics['within_4000_pct']:.2f}%")
-    print(f"  Within 5000 km:      {geo_metrics['within_5000_pct']:.2f}%")
+    print(f"  Mean error (miles):  {geo_metrics['mean_miles']:.1f}")
+    print(f"  Median error (miles):{geo_metrics['median_miles']:.1f}")
+    print(f"  Within 311 miles:    {geo_metrics['within_311_pct']:.2f}%")
+    print(f"  Within 1243 miles:   {geo_metrics['within_1243_pct']:.2f}%")
+    print(f"  Within 1864 miles:   {geo_metrics['within_1864_pct']:.2f}%")
+    print(f"  Within 2485 miles:   {geo_metrics['within_2485_pct']:.2f}%")
+    print(f"  Within 3107 miles:   {geo_metrics['within_3107_pct']:.2f}%")
     print(
-        "  Distance score exp(-d/tau), tau=1500 km: "
+        f"  Distance score exp(-d/tau), tau={DISTANCE_LOSS_TAU_MILES:.0f} miles: "
         f"{geo_metrics['weighted_score']:.4f}"
     )
     print(f"Saved confusion matrix to {confusion_matrix_output}")
