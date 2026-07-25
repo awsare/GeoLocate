@@ -4,4 +4,6 @@ pandas
 pillow
 kagglehub
 matplotlib
+flask
+scikit-learn
 tqdm

@@ -100,8 +100,8 @@
                 <h1>GeoLocate</h1>
                 <p>Welcome to GeoLocate! This application allows you to upload an image and get its geographical location.</p>
                 <form action="/upload" method="post" enctype="multipart/form-data">
-                    <input type="file" name="image" accept="image/*" required>
-                    <button type="submit">Upload Image</button>
+                    <input id="fileInput" type="file" name="image" accept="image/*" required>
+                    <button id="uploadBtn" type="button">Upload Image</button>
                 </form>
                 <h2>Results</h2>
                 <div id="results">
@@ -110,5 +110,52 @@
             </section>
         </main>
         <div class="side-panel"></div>
+        <script>
+            const uploadBtn = document.getElementById('uploadBtn');
+            const fileInput = document.getElementById('fileInput');
+            const results = document.getElementById('results');
+
+            uploadBtn.addEventListener('click', async () => {
+                if (!fileInput.files || fileInput.files.length === 0) return alert('Select an image first');
+                const fd = new FormData();
+                fd.append('image', fileInput.files[0]);
+                fd.append('topk', '3');
+
+                results.innerHTML = '<p>Uploading and computing results…</p>';
+                try {
+                    const resp = await fetch('/predict', {method: 'POST', body: fd});
+                    if (!resp.ok) throw new Error(await resp.text());
+                    const data = await resp.json();
+                    renderResults(data);
+                } catch (err) {
+                    results.innerHTML = '<p style="color:crimson">Error: ' + err.message + '</p>';
+                }
+            });
+
+            function renderResults(data) {
+                let html = '';
+                if (data.predictions) {
+                    html += '<h3>Top Predictions</h3><ul>';
+                    for (const p of data.predictions) {
+                        html += `<li><strong>${p.sector}</strong> — ${ (p.score*100).toFixed(1) }%</li>`;
+                    }
+                    html += '</ul>';
+                }
+
+                if (data.neighbors) {
+                    html += '<h3>Nearest Training Examples</h3><div style="display:flex;gap:12px;flex-wrap:wrap">';
+                    for (const n of data.neighbors) {
+                        html += '<div style="width:160px;text-align:center">';
+                        if (n.thumbnail) html += `<img src="${n.thumbnail}" style="width:160px;height:160px;object-fit:cover;border-radius:8px;display:block;margin:0 auto 8px;">`;
+                        html += `<div style="font-size:0.9rem">${n.sector}</div>`;
+                        html += `<div style="color:#666;font-size:0.8rem">dist ${(n.distance).toFixed(3)}</div>`;
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                results.innerHTML = html;
+            }
+        </script>
     </body>
 </html>
