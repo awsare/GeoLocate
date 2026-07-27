@@ -5,8 +5,10 @@
     "classes": 18,
     "finalModel": "Sectors + ResNet34 + two-stage training + class weights + distance penalty (0.1)",
     "headline": {
-      "testAccuracy": 61,
-      "distanceScore": 0.6527
+      "testAccuracy": 61
+    },
+    "benchmarks": {
+      "continentModelTestAccuracy": 74
     },
     "finalPerformance": {
       "accuracyOnTest": 61,

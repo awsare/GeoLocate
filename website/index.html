@@ -7,19 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="./css/main.css?v=20260726c">
   </head>
   <body>
-    <header class="top-nav">
-      <a class="brand" href="index.html">GeoLocate Website</a>
-      <nav class="nav-links">
-        <a href="#overview">Overview</a>
-        <a href="#evolution">Evolution</a>
-        <a href="#performance">Final Performance</a>
-        <a href="#repro">Reproducibility</a>
-      </nav>
-    </header>
-
     <main class="site-wrap">
       <section class="hero" data-hero></section>
 
@@ -77,35 +67,8 @@
         <div class="section-inner" data-final-performance></div>
       </section>
 
-      <section class="section">
-        <h2>Evaluation Visuals</h2>
-        <div class="image-grid">
-          <figure class="image-card reveal">
-            <img src="./assets/confusion_matrix.png" alt="Confusion matrix for final model across 18 sectors">
-            <figcaption>Confusion matrix of the final model.</figcaption>
-          </figure>
-          <figure class="image-card reveal">
-            <img src="./assets/distance_error_histogram.png" alt="Histogram of geographic error distances in miles">
-            <figcaption>Geographic error distance histogram.</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section id="repro" class="section reveal">
-        <h2>Reproducibility</h2>
-        <div class="callout">
-          download_dataset.py -> prepare_dataset.py -> train.py -> evaluate.py -> evaluate_distance.py
-        </div>
-        <p>To update this website after a new run, only edit website/assets/results.json.</p>
-      </section>
-
-      <p class="section" data-errors></p>
-
-      <footer>
-        Source code and training pipeline are in the repository root. This is a single-page static website in website/.
-      </footer>
     </main>
 
-    <script src="./js/main.js"></script>
+    <script src="./js/main.js?v=20260726c"></script>
   </body>
 </html>

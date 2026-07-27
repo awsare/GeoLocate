@@ -203,10 +203,10 @@ a {
 .timeline::before {
   content: "";
   position: absolute;
-  left: 11px;
+  left: 12px;
   top: 0;
   bottom: 0;
-  width: 3px;
+  width: 4px;
   background: linear-gradient(var(--accent), #8bc8c4);
 }
 
@@ -229,7 +229,7 @@ a {
 .step::before {
   content: "";
   position: absolute;
-  left: -35px;
+  left: -36px;
   top: 20px;
   width: 14px;
   height: 14px;
@@ -249,31 +249,21 @@ a {
   color: var(--ink);
 }
 
-.step-sub {
-  margin: 6px 0 0;
-  color: #506b6e;
-  font-size: 0.92rem;
-}
-
 .step-metrics {
   margin-top: 10px;
   display: grid;
   gap: 8px;
+  width: 100%;
 }
 
 .step-metric-row {
-  display: grid;
-  grid-template-columns: 84px 1fr 62px;
-  gap: 10px;
-  align-items: center;
-}
-
-.step-metric-label {
-  font-size: 0.86rem;
-  color: #436164;
+  display: block;
+  width: 100%;
 }
 
 .step-metric-track {
+  display: block;
+  width: 100%;
   height: 10px;
   border-radius: 999px;
   overflow: hidden;
@@ -292,27 +282,21 @@ a {
   background: linear-gradient(90deg, #8f4c00, #e37b40);
 }
 
-.badges {
-  margin-top: 10px;
+.step-metric-meta {
+  margin-top: 6px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
-.badge {
-  display: inline-block;
-  font-size: 0.78rem;
-  border-radius: 999px;
-  padding: 4px 9px;
-  border: 1px solid #c9d9d6;
-  background: #f4fbfa;
-  color: #29575b;
+.step-metric-name {
+  font-size: 0.82rem;
+  color: #4f6568;
 }
 
-.badge.final {
-  border-color: rgba(26, 127, 60, 0.4);
-  background: rgba(26, 127, 60, 0.12);
-  color: #1a6a38;
+.step-metric-value {
+  margin: 0;
 }
 
 .table-wrap {
@@ -488,10 +472,6 @@ footer {
 @media (max-width: 860px) {
   .bar-row {
     grid-template-columns: 1fr;
-  }
-
-  .step-metric-row {
-    grid-template-columns: 78px 1fr 54px;
   }
 
   .final-panel {

@@ -1,5 +1,5 @@
 async function loadResults() {
-  const response = await fetch('./assets/results.json');
+  const response = await fetch('./assets/results.json?v=20260726', { cache: 'no-store' });
   if (!response.ok) {
     throw new Error('Unable to load results.json');
   }
@@ -24,16 +24,14 @@ function withScore(value) {
   return typeof value === 'number' ? value.toFixed(2) : 'NA';
 }
 
-function makeBadges(items, isFinal) {
-  const wrappers = items
-    .map((item) => `<span class="badge${isFinal ? ' final' : ''}">${item}</span>`)
-    .join('');
-  return `<div class="badges">${wrappers}</div>`;
-}
-
 function renderHero(project) {
   const hero = document.querySelector('[data-hero]');
   if (!hero) return;
+
+  const continentBenchmark =
+    project.benchmarks && typeof project.benchmarks.continentModelTestAccuracy === 'number'
+      ? `${project.benchmarks.continentModelTestAccuracy}%`
+      : 'NA';
 
   hero.innerHTML = `
     <h1>${project.name}: Design Journey To Better Geographic Predictions</h1>
@@ -44,16 +42,12 @@ function renderHero(project) {
     </p>
     <div class="hero-meta">
       <div class="metric-card">
-        <div class="k">Final Test Accuracy</div>
+        <div class="k">Sector Model Accuracy</div>
         <div class="v">${project.headline.testAccuracy}%</div>
       </div>
       <div class="metric-card">
-        <div class="k">Final Distance Score</div>
-        <div class="v">${project.headline.distanceScore.toFixed(2)}</div>
-      </div>
-      <div class="metric-card">
-        <div class="k">Label Space</div>
-        <div class="v">${project.classes} Sectors</div>
+        <div class="k">Continent Model Accuracy</div>
+        <div class="v">${continentBenchmark}</div>
       </div>
     </div>
   `;
@@ -76,28 +70,27 @@ function renderTimeline(experiments) {
       return `
         <article class="step reveal${final ? ' final' : ''}">
           <p class="step-title">${exp.order}. ${exp.name}</p>
-          <p class="step-sub">
-            Accuracy: ${withPct(exp.testAccuracy)} | Distance score: ${withScore(exp.distanceScore)}
-          </p>
           <p>${exp.summary}</p>
-          <p><strong>Tradeoff:</strong> ${exp.tradeoff}</p>
           <div class="step-metrics">
             <div class="step-metric-row">
-              <span class="step-metric-label">Accuracy</span>
               <div class="step-metric-track">
                 <div class="step-metric-fill" style="width: ${accuracyWidth}%"></div>
               </div>
-              <strong>${withPct(exp.testAccuracy)}</strong>
+              <div class="step-metric-meta">
+                <span class="step-metric-name">Accuracy</span>
+                <strong class="step-metric-value">${withPct(exp.testAccuracy)}</strong>
+              </div>
             </div>
             <div class="step-metric-row">
-              <span class="step-metric-label">Distance</span>
               <div class="step-metric-track">
                 <div class="step-metric-fill dist" style="width: ${distanceWidth}%"></div>
               </div>
-              <strong>${hasDistance ? withScore(exp.distanceScore) : 'NA'}</strong>
+              <div class="step-metric-meta">
+                <span class="step-metric-name">Distance</span>
+                <strong class="step-metric-value">${hasDistance ? withScore(exp.distanceScore) : 'NA'}</strong>
+              </div>
             </div>
           </div>
-          ${makeBadges(exp.changes, final)}
         </article>
       `;
     })
@@ -119,7 +112,6 @@ function renderFinalModel(data) {
   panel.innerHTML = `
     <div>
       <h3>${finalExp.name}</h3>
-      <p>${finalExp.summary}</p>
       <div class="kpi-grid">
         <div class="kpi">
           <div class="kpi-label">Test Accuracy</div>
@@ -134,7 +126,6 @@ function renderFinalModel(data) {
           <div class="kpi-value">${finalExp.backbone}</div>
         </div>
       </div>
-      ${makeBadges(finalExp.changes, true)}
     </div>
     <div>
       <div class="callout">
@@ -144,11 +135,6 @@ function renderFinalModel(data) {
           which aligns with the project goal of reducing severe location errors.
         </p>
       </div>
-      <p><strong>Tradeoff:</strong> ${finalExp.tradeoff}</p>
-      <p>
-        Compared with deeper alternatives in this progression, this configuration achieved
-        a better performance-to-compute balance.
-      </p>
     </div>
   `;
 }
