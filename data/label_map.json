@@ -1,11 +1,23 @@
 {
   "continent": {
-    "Africa": 0,
-    "Asia": 1,
-    "Europe": 2,
-    "North America": 3,
-    "Oceania": 4,
-    "South America": 5
+    "Australia and New Zealand": 0,
+    "Caribbean": 1,
+    "Central America": 2,
+    "Central Asia": 3,
+    "Eastern Africa": 4,
+    "Eastern Asia": 5,
+    "Eastern Europe": 6,
+    "Northern Africa": 7,
+    "Northern America": 8,
+    "Northern Europe": 9,
+    "South America": 10,
+    "South-eastern Asia": 11,
+    "Southern Africa": 12,
+    "Southern Asia": 13,
+    "Southern Europe": 14,
+    "Western Africa": 15,
+    "Western Asia": 16,
+    "Western Europe": 17
   },
   "subregion": {
     "Australia and New Zealand": 0,

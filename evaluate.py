@@ -23,7 +23,13 @@ from config import (
 )
 from dataset import GeoLocateDataset
 from model import Net
-from sectors import get_active_sector_centroids
+from sectors import (
+    CONTINENT_CENTROIDS,
+    COUNTRY_TO_CONTINENT,
+    COUNTRY_TO_SUBREGION,
+    SUBREGION_CENTROIDS,
+    get_active_sector_centroids,
+)
 from train import get_device
 
 
@@ -77,6 +83,63 @@ def evaluate_per_class(net, testloader, label_map, device):
         accuracy = 100 * correct_count / total_pred[sector] if total_pred[sector] else 0
         results.append((sector, accuracy))
     return results
+
+
+def _build_sector_to_continent_map(label_map):
+    """Return {sector_name: continent_name} for sectors present in label_map."""
+    sector_to_continent = {}
+    for country, subregion in COUNTRY_TO_SUBREGION.items():
+        continent = COUNTRY_TO_CONTINENT[country]
+        known = sector_to_continent.get(subregion)
+        if known is not None and known != continent:
+            raise RuntimeError(
+                "Inconsistent subregion-to-continent mapping for "
+                f"'{subregion}': '{known}' vs '{continent}'."
+            )
+        sector_to_continent[subregion] = continent
+
+    for continent in CONTINENT_CENTROIDS:
+        sector_to_continent.setdefault(continent, continent)
+
+    missing = sorted(set(label_map.keys()) - set(sector_to_continent.keys()))
+    if missing:
+        missing_names = ", ".join(missing)
+        raise RuntimeError(
+            "Missing continent mapping for sector(s): "
+            f"{missing_names}. Update sector mappings in sectors.py."
+        )
+
+    return {sector: sector_to_continent[sector] for sector in label_map}
+
+
+def evaluate_continent_accuracy(net, testloader, label_map, device):
+    """Return continent-level accuracy (%) from sector predictions."""
+    idx_to_sector = {idx: sector for sector, idx in label_map.items()}
+    sector_to_continent = _build_sector_to_continent_map(label_map)
+
+    correct, total = 0, 0
+    with torch.no_grad():
+        for data in tqdm(
+            testloader,
+            desc="Continent Accuracy",
+            unit="batch",
+            leave=False,
+            position=1,
+        ):
+            images, labels = data[0].to(device), data[1].to(device)
+            outputs = net(images)
+            _, predictions = torch.max(outputs, 1)
+
+            for true_label, pred_label in zip(labels.cpu(), predictions.cpu()):
+                true_sector = idx_to_sector[true_label.item()]
+                pred_sector = idx_to_sector[pred_label.item()]
+                if sector_to_continent[true_sector] == sector_to_continent[pred_sector]:
+                    correct += 1
+                total += 1
+
+    if total == 0:
+        raise RuntimeError("Test split has zero samples; cannot compute accuracy.")
+    return 100 * correct / total
 
 
 def evaluate_confusion_matrix(net, testloader, label_map, device, output_path):
@@ -140,8 +203,27 @@ def haversine_miles(lat1, lon1, lat2, lon2):
 def evaluate_geographic_distance(net, testloader, label_map, device):
     """Return distance-aware metrics using sector-centroid great-circle error."""
     idx_to_sector = {idx: sector for sector, idx in label_map.items()}
-    centroid_map = get_active_sector_centroids()
-    missing = sorted(set(idx_to_sector.values()) - set(centroid_map))
+    sectors_in_eval = set(idx_to_sector.values())
+    centroid_candidates = [
+        ("active", get_active_sector_centroids()),
+        ("continent", CONTINENT_CENTROIDS),
+        ("subregion", SUBREGION_CENTROIDS),
+    ]
+
+    centroid_map = None
+    for _, candidate_map in centroid_candidates:
+        if sectors_in_eval.issubset(candidate_map.keys()):
+            centroid_map = candidate_map
+            break
+
+    if centroid_map is None:
+        missing = sorted(
+            sectors_in_eval
+            - (set(CONTINENT_CENTROIDS.keys()) | set(SUBREGION_CENTROIDS.keys()))
+        )
+    else:
+        missing = sorted(sectors_in_eval - set(centroid_map.keys()))
+
     if missing:
         missing_names = ", ".join(missing)
         raise RuntimeError(
@@ -150,11 +232,10 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
         )
 
     distances_miles = []
-    within_311 = 0
-    within_1243 = 0
-    within_1864 = 0
-    within_2485 = 0
-    within_3107 = 0
+    within_500 = 0
+    within_1000 = 0
+    within_3000 = 0
+    within_5000 = 0
     weighted_sum = 0.0
     weighted_tau_miles = DISTANCE_LOSS_TAU_MILES
 
@@ -178,16 +259,14 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
                 distance_miles = haversine_miles(true_lat, true_lon, pred_lat, pred_lon)
                 distances_miles.append(distance_miles)
 
-                if distance_miles <= 311:
-                    within_311 += 1
-                if distance_miles <= 1243:
-                    within_1243 += 1
-                if distance_miles <= 1864:
-                    within_1864 += 1
-                if distance_miles <= 2485:
-                    within_2485 += 1
-                if distance_miles <= 3107:
-                    within_3107 += 1
+                if distance_miles <= 500:
+                    within_500 += 1
+                if distance_miles <= 1000:
+                    within_1000 += 1
+                if distance_miles <= 3000:
+                    within_3000 += 1
+                if distance_miles <= 5000:
+                    within_5000 += 1
                 weighted_sum += math.exp(-distance_miles / weighted_tau_miles)
 
     if not distances_miles:
@@ -201,11 +280,10 @@ def evaluate_geographic_distance(net, testloader, label_map, device):
     return {
         "mean_miles": mean_miles,
         "median_miles": median_miles,
-        "within_311_pct": 100.0 * within_311 / count,
-        "within_1243_pct": 100.0 * within_1243 / count,
-        "within_1864_pct": 100.0 * within_1864 / count,
-        "within_2485_pct": 100.0 * within_2485 / count,
-        "within_3107_pct": 100.0 * within_3107 / count,
+        "within_500_pct": 100.0 * within_500 / count,
+        "within_1000_pct": 100.0 * within_1000 / count,
+        "within_3000_pct": 100.0 * within_3000 / count,
+        "within_5000_pct": 100.0 * within_5000 / count,
         "weighted_score": weighted_score,
         "distances_miles": distances_miles,
     }
@@ -280,9 +358,17 @@ def main():
     net = load_checkpoint(CHECKPOINT_PATH, len(test_dataset.label_map), device)
     print(f"Loaded model from {CHECKPOINT_PATH}")
 
-    evaluation_steps = tqdm(total=5, desc="Evaluation Progress", unit="stage", position=0)
+    evaluation_steps = tqdm(total=6, desc="Evaluation Progress", unit="stage", position=0)
 
     overall_accuracy = evaluate_overall(net, testloader, device)
+    evaluation_steps.update(1)
+
+    continent_accuracy = evaluate_continent_accuracy(
+        net,
+        testloader,
+        test_dataset.label_map,
+        device,
+    )
     evaluation_steps.update(1)
 
     per_class_results = evaluate_per_class(net, testloader, test_dataset.label_map, device)
@@ -317,6 +403,7 @@ def main():
 
     print("\nEvaluation Summary")
     print(f"Accuracy on test images: {overall_accuracy:.1f} %")
+    print(f"Continent-level accuracy on test images: {continent_accuracy:.1f} %")
 
     print("Per-class accuracy:")
     for sector, accuracy in per_class_results:
@@ -325,11 +412,10 @@ def main():
     print("Geographic distance metrics (sector-centroid based):")
     print(f"  Mean error (miles):  {geo_metrics['mean_miles']:.1f}")
     print(f"  Median error (miles):{geo_metrics['median_miles']:.1f}")
-    print(f"  Within 311 miles:    {geo_metrics['within_311_pct']:.2f}%")
-    print(f"  Within 1243 miles:   {geo_metrics['within_1243_pct']:.2f}%")
-    print(f"  Within 1864 miles:   {geo_metrics['within_1864_pct']:.2f}%")
-    print(f"  Within 2485 miles:   {geo_metrics['within_2485_pct']:.2f}%")
-    print(f"  Within 3107 miles:   {geo_metrics['within_3107_pct']:.2f}%")
+    print(f"  Within 500 miles:    {geo_metrics['within_500_pct']:.2f}%")
+    print(f"  Within 1000 miles:   {geo_metrics['within_1000_pct']:.2f}%")
+    print(f"  Within 3000 miles:   {geo_metrics['within_3000_pct']:.2f}%")
+    print(f"  Within 5000 miles:   {geo_metrics['within_5000_pct']:.2f}%")
     print(
         f"  Distance score exp(-d/tau), tau={DISTANCE_LOSS_TAU_MILES:.0f} miles: "
         f"{geo_metrics['weighted_score']:.4f}"

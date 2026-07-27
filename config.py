@@ -30,10 +30,10 @@ MANIFEST_PATH = os.path.join(DATA_DIR, "manifest.csv")
 LABEL_MAP_PATH = os.path.join(DATA_DIR, "label_map.json")
 
 # Main checkpoint produced by train.py and consumed by evaluate.py.
-CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "final_net.pth")
+CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "sector_net.pth")
 
 # Optional final-epoch checkpoint for debugging/training analysis.
-LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "geolocate_net_last.pth")
+LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "net_last.pth")
 
 # Smoke-test checkpoint path used for save/load roundtrip checks.
 SMOKE_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "smoke_test.pth")
@@ -83,7 +83,7 @@ BATCH_SIZE = 32
 TRAIN_NUM_WORKERS = 4
 
 # Total training epochs across both warmup and fine-tuning phases.
-NUM_EPOCHS = 60
+NUM_EPOCHS = 40
 
 # Number of initial epochs that train only the classifier head.
 HEAD_WARMUP_EPOCHS = 5
@@ -107,7 +107,7 @@ WEIGHT_DECAY = 1e-4
 PRINT_EVERY = 100
 
 # Enable OneCycleLR scheduling (applied separately per training phase).
-USE_ONE_CYCLE_LR = True
+USE_ONE_CYCLE_LR = False
 
 # OneCycleLR shape controls.
 # Fraction of total steps used to increase LR from initial_lr to max_lr.
@@ -130,13 +130,13 @@ BEST_CHECKPOINT_METRIC = "macro_accuracy"
 # =================
 
 # Whether to use inverse-frequency class weights in CrossEntropyLoss.
-USE_CLASS_WEIGHTS = False
+USE_CLASS_WEIGHTS = True
 
 # Label smoothing applied to CrossEntropyLoss targets.
 LABEL_SMOOTHING = 0.00
 
 # Whether to oversample minority classes via WeightedRandomSampler.
-USE_WEIGHTED_SAMPLER = True
+USE_WEIGHTED_SAMPLER = False
 
 
 # ==========================
@@ -151,7 +151,7 @@ USE_WEIGHTED_SAMPLER = True
 USE_DISTANCE_LOSS = True
 
 # Weight for the geographic penalty term in the total loss.
-DISTANCE_LOSS_WEIGHT = 0.05
+DISTANCE_LOSS_WEIGHT = 0.1
 
 # Temperature (in miles) for converting expected distance into a bounded penalty:
 # penalty = 1 - exp(-expected_distance_miles / DISTANCE_LOSS_TAU_MILES)
