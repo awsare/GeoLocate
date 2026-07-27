@@ -23,7 +23,11 @@ from config import (
 )
 from dataset import GeoLocateDataset
 from model import Net
-from sectors import get_active_sector_centroids
+from sectors import (
+    CONTINENT_CENTROIDS,
+    SUBREGION_CENTROIDS,
+    get_active_sector_centroids,
+)
 from train import get_device
 
 
@@ -140,8 +144,27 @@ def haversine_miles(lat1, lon1, lat2, lon2):
 def evaluate_geographic_distance(net, testloader, label_map, device):
     """Return distance-aware metrics using sector-centroid great-circle error."""
     idx_to_sector = {idx: sector for sector, idx in label_map.items()}
-    centroid_map = get_active_sector_centroids()
-    missing = sorted(set(idx_to_sector.values()) - set(centroid_map))
+    sectors_in_eval = set(idx_to_sector.values())
+    centroid_candidates = [
+        ("active", get_active_sector_centroids()),
+        ("continent", CONTINENT_CENTROIDS),
+        ("subregion", SUBREGION_CENTROIDS),
+    ]
+
+    centroid_map = None
+    for _, candidate_map in centroid_candidates:
+        if sectors_in_eval.issubset(candidate_map.keys()):
+            centroid_map = candidate_map
+            break
+
+    if centroid_map is None:
+        missing = sorted(
+            sectors_in_eval
+            - (set(CONTINENT_CENTROIDS.keys()) | set(SUBREGION_CENTROIDS.keys()))
+        )
+    else:
+        missing = sorted(sectors_in_eval - set(centroid_map.keys()))
+
     if missing:
         missing_names = ", ".join(missing)
         raise RuntimeError(
