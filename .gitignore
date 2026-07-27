@@ -25,6 +25,7 @@ data/*
 !data/label_map.json
 
 # Training artifacts
-checkpoints/
+checkpoints/*
+!checkpoints/sector_net.pth
 logs/
 reports/
