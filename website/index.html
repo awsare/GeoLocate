@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoLocate | Model Story</title>
+    <title>GeoLocate</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -22,46 +22,30 @@
           is not specifically engineered to detect text artifacts such as street signs, license plates,
           or other metadata-like location cues.
         </p>
-        <div class="kpi-grid">
-          <div class="kpi">
-            <div class="kpi-label">Dataset</div>
-            <div class="kpi-value">~50k Images</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Label Space</div>
-            <div class="kpi-value">18 Sectors</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Core Backbone</div>
-            <div class="kpi-value">ResNet Family</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Training Pattern</div>
-            <div class="kpi-value">Two-Stage Fine-Tune</div>
-          </div>
-        </div>
       </section>
 
       <section id="evolution" class="section">
-        <h2>Design Process In One View</h2>
+        <h2>Design Process</h2>
         <p>
-          The model evolved through six main decision gates. Each gate introduced one controlled change,
-          then tracked its effect on test accuracy and geographic quality.
+          The model evolved through six major design decisions. Each decision introduced one controlled change,
+          then we tracked its effect on test accuracy and distance score.
         </p>
         <div class="process-grid" data-process-cards></div>
       </section>
 
       <section class="section">
         <h2>Model Structure Walkthrough</h2>
-        <p>Each row is one tested structure from baseline to the final selected model.</p>
+        <p>
+          Each row is one tested structure from baseline to the final selected model (test structure 8).
+          Distance score is an exponential geographic quality metric (exp(-d/tau)) where higher values mean predictions are closer to the true region.
+        </p>
         <div class="timeline" data-timeline></div>
       </section>
 
       <section id="performance" class="section reveal">
         <h2>Final Model Performance</h2>
         <p>
-          Focused on strong signals: overall test accuracy, geographic error profile, and strongest
-          per-sector accuracies.
+          Selected for the best tradeoff between exact-label accuracy and geographic closeness, while keeping complexity practical.
         </p>
         <div class="final-panel" data-final-model></div>
         <div class="section-inner" data-final-performance></div>
