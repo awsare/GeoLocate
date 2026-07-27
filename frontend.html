@@ -6,14 +6,28 @@
                 margin: 0;
                 min-height: 100vh;
                 display: flex;
-                background: #e8eef6;
+                background-image: url('/static/background.jpg');
+                background-size: cover;
+                background-attachment: fixed;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-color: transparent;
                 font-family: Arial, sans-serif;
+            }
+
+            body::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.28);
+                pointer-events: none;
+                z-index: 0;
             }
 
             .side-panel {
                 width: 15%;
                 min-width: 120px;
-                background: #1f364f;
+                background: transparent;
             }
 
             .center-panel {
@@ -22,22 +36,72 @@
                 justify-content: center;
                 align-items: center;
                 padding: 40px 20px;
+                min-height: 100vh;
+                box-sizing: border-box;
+                position: relative;
+                z-index: 1;
             }
 
             .content-card {
                 width: 100%;
-                max-width: 720px;
+                max-width: 820px;
                 background: #ffffff;
-                border-radius: 24px;
-                padding: 32px;
-                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+                border-radius: 12px;
+                padding: 20px 28px;
+                box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+                border: 1px solid rgba(0,0,0,0.06);
+                height: calc(100vh - 80px);
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                position: relative;
+                z-index: 2;
+            }
+
+            .panel-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            .controls {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .btn {
+                padding: 10px 16px;
+                border-radius: 10px;
+                border: none;
+                cursor: pointer;
+                font-weight: 600;
+            }
+
+            .btn-primary {
+                background: #1f364f;
+                color: #fff;
+            }
+
+            .btn-secondary {
+                background: rgba(31,54,79,0.08);
+                color: #1f364f;
+            }
+
+            .info-block {
+                display: flex;
+                gap: 18px;
+                align-items: center;
+                font-size: 0.95rem;
+                color: #162339;
             }
 
             h1,
             h2 {
                 margin: 0;
                 color: #162339;
-                text-align: center;
             }
 
             h2 {
@@ -52,15 +116,13 @@
 
             form {
                 display: flex;
-                flex-direction: column;
+                gap: 12px;
                 align-items: center;
-                gap: 16px;
-                margin-top: 24px;
+                margin: 0;
             }
 
             input[type="file"] {
-                width: 100%;
-                max-width: 400px;
+                display: inline-block;
             }
 
             button {
@@ -79,11 +141,11 @@
             }
 
             #results {
-                margin-top: 20px;
-                background: #f5f8fc;
-                border: 1px solid #d8e1ef;
-                border-radius: 18px;
-                padding: 24px;
+                margin-top: 16px;
+                background: rgba(245, 248, 252, 0.9);
+                border: 1px solid rgba(216,225,239,0.7);
+                border-radius: 12px;
+                padding: 18px;
                 min-height: 160px;
             }
 
@@ -97,14 +159,33 @@
         <div class="side-panel"></div>
         <main class="center-panel">
             <section class="content-card">
-                <h1>GeoLocate</h1>
-                <p>Welcome to GeoLocate! This application allows you to upload an image and get its geographical location.</p>
-                <form action="/upload" method="post" enctype="multipart/form-data">
-                    <input id="fileInput" type="file" name="image" accept="image/*" required>
-                    <button id="uploadBtn" type="button">Upload Image</button>
-                </form>
-                <h2>Results</h2>
-                <div id="results">
+                <div class="panel-header">
+                    <div>
+                        <h1>GeoLocate</h1>
+                        <div class="info-block">
+                            <div>Model: <strong>ResNet</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button id="clearBtn" class="btn btn-secondary" type="button">Clear</button>
+                    </div>
+                </div>
+
+                <p style="margin-top:8px;">Upload an image (Street View style) and the model will predict the most likely geographic sectors.</p>
+                <div style="margin-top:18px;display:flex;justify-content:center;gap:12px;align-items:center;">
+                    <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+                        <input id="fileInput" type="file" name="image" accept="image/*" required>
+                        <button id="uploadBtn" class="btn btn-primary" type="button">Upload</button>
+                    </form>
+                </div>
+
+                <div class="preview" style="margin-top:12px;display:flex;justify-content:center;">
+                    <img id="previewImg" src="" alt="Preview" style="max-width:420px;max-height:320px;border-radius:8px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.25);display:none;" />
+                </div>
+
+                <h2 style="margin-top:20px;">Results</h2>
+                <div id="results" style="margin-top:8px;">
                     <p>No results yet. Upload an image to see the closest sectors.</p>
                 </div>
             </section>
@@ -114,6 +195,41 @@
             const uploadBtn = document.getElementById('uploadBtn');
             const fileInput = document.getElementById('fileInput');
             const results = document.getElementById('results');
+            const clearBtn = document.getElementById('clearBtn');
+            const previewImg = document.getElementById('previewImg');
+            let previewUrl = null;
+
+            clearBtn.addEventListener('click', () => {
+                fileInput.value = '';
+                // revoke preview URL if present
+                if (previewUrl) {
+                    URL.revokeObjectURL(previewUrl);
+                    previewUrl = null;
+                }
+                if (previewImg) {
+                    previewImg.src = '';
+                    previewImg.style.display = 'none';
+                }
+                results.innerHTML = '<p>No results yet. Upload an image to see the closest sectors.</p>';
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    if (previewUrl) {
+                        URL.revokeObjectURL(previewUrl);
+                        previewUrl = null;
+                    }
+                    if (previewImg) previewImg.style.display = 'none';
+                    return;
+                }
+                const file = fileInput.files[0];
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                previewUrl = URL.createObjectURL(file);
+                if (previewImg) {
+                    previewImg.src = previewUrl;
+                    previewImg.style.display = 'block';
+                }
+            });
 
             uploadBtn.addEventListener('click', async () => {
                 if (!fileInput.files || fileInput.files.length === 0) return alert('Select an image first');
@@ -126,6 +242,11 @@
                     const resp = await fetch('/predict', {method: 'POST', body: fd});
                     if (!resp.ok) throw new Error(await resp.text());
                     const data = await resp.json();
+                    // If server returns sector count, display it in header
+                    if (data.sector_count) {
+                        const sc = document.getElementById('sectorCount');
+                        if (sc) sc.textContent = data.sector_count;
+                    }
                     renderResults(data);
                 } catch (err) {
                     results.innerHTML = '<p style="color:crimson">Error: ' + err.message + '</p>';
