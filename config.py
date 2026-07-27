@@ -30,7 +30,7 @@ MANIFEST_PATH = os.path.join(DATA_DIR, "manifest.csv")
 LABEL_MAP_PATH = os.path.join(DATA_DIR, "label_map.json")
 
 # Main checkpoint produced by train.py and consumed by evaluate.py.
-CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "sector_net.pth")
+CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "final_net.pth")
 
 # Optional final-epoch checkpoint for debugging/training analysis.
 LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, "net_last.pth")

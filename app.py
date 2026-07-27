@@ -90,17 +90,27 @@ else:
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    f = request.files.get("image")
-    if f is None:
-        return jsonify({"error": "no file uploaded"}), 400
+    files = request.files.getlist("image")
+    if not files:
+        return jsonify({"error": "no files uploaded"}), 400
+    if len(files) != 4:
+        return jsonify({"error": "please upload exactly 4 images"}), 400
 
-    img = Image.open(io.BytesIO(f.read())).convert("RGB")
-    x = transform(img).unsqueeze(0).to(device)
+    images = []
+    for f in files:
+        try:
+            img = Image.open(io.BytesIO(f.read())).convert("RGB")
+            images.append(transform(img))
+        except Exception:
+            return jsonify({"error": "unable to process one or more uploaded images"}), 400
 
-    # classifier predictions
+    x = torch.stack(images).to(device)
+
+    # classifier predictions across all 4 images
     with torch.no_grad():
         logits = net(x)
-        probs = torch.softmax(logits, dim=1).squeeze(0).cpu().numpy()
+        combined_logits = logits.mean(dim=0, keepdim=True)
+        probs = torch.softmax(combined_logits, dim=1).squeeze(0).cpu().numpy()
 
     topk = int(request.form.get("topk", 3))
     inds = np.argsort(probs)[-topk:][::-1]
@@ -111,7 +121,8 @@ def predict():
     # nearest-neighbor results (if index exists)
     if nn is not None:
         feats = extract_backbone_features(net, x, device)
-        dists, ids = nn.kneighbors(feats, n_neighbors=5, return_distance=True)
+        query_feat = np.mean(feats, axis=0, keepdims=True)
+        dists, ids = nn.kneighbors(query_feat, n_neighbors=5, return_distance=True)
         neighbors = []
         for dist, idx in zip(dists[0], ids[0]):
             fp = filepaths[int(idx)]

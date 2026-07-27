@@ -172,16 +172,15 @@
                     </div>
                 </div>
 
-                <p style="margin-top:8px;">Upload an image (Street View style) and the model will predict the most likely geographic sectors.</p>
+                <p style="margin-top:8px;">Upload exactly 4 images and the model will predict the most likely geographic sector from the combined set.</p>
                 <div style="margin-top:18px;display:flex;justify-content:center;gap:12px;align-items:center;">
                     <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
-                        <input id="fileInput" type="file" name="image" accept="image/*" required>
+                        <input id="fileInput" type="file" name="image" accept="image/*" multiple required>
                         <button id="uploadBtn" class="btn btn-primary" type="button">Upload</button>
                     </form>
                 </div>
 
-                <div class="preview" style="margin-top:12px;display:flex;justify-content:center;">
-                    <img id="previewImg" src="" alt="Preview" style="max-width:420px;max-height:320px;border-radius:8px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.25);display:none;" />
+                <div id="previewContainer" style="margin-top:12px;display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:12px;justify-items:center;">
                 </div>
 
                 <h2 style="margin-top:20px;">Results</h2>
@@ -196,45 +195,44 @@
             const fileInput = document.getElementById('fileInput');
             const results = document.getElementById('results');
             const clearBtn = document.getElementById('clearBtn');
-            const previewImg = document.getElementById('previewImg');
-            let previewUrl = null;
+            const previewContainer = document.getElementById('previewContainer');
+            let previewUrls = [];
 
             clearBtn.addEventListener('click', () => {
                 fileInput.value = '';
-                // revoke preview URL if present
-                if (previewUrl) {
-                    URL.revokeObjectURL(previewUrl);
-                    previewUrl = null;
-                }
-                if (previewImg) {
-                    previewImg.src = '';
-                    previewImg.style.display = 'none';
-                }
+                previewUrls.forEach((url) => URL.revokeObjectURL(url));
+                previewUrls = [];
+                previewContainer.innerHTML = '';
                 results.innerHTML = '<p>No results yet. Upload an image to see the closest sectors.</p>';
             });
 
             fileInput.addEventListener('change', () => {
-                if (!fileInput.files || fileInput.files.length === 0) {
-                    if (previewUrl) {
-                        URL.revokeObjectURL(previewUrl);
-                        previewUrl = null;
-                    }
-                    if (previewImg) previewImg.style.display = 'none';
-                    return;
-                }
-                const file = fileInput.files[0];
-                if (previewUrl) URL.revokeObjectURL(previewUrl);
-                previewUrl = URL.createObjectURL(file);
-                if (previewImg) {
-                    previewImg.src = previewUrl;
-                    previewImg.style.display = 'block';
-                }
+                previewUrls.forEach((url) => URL.revokeObjectURL(url));
+                previewUrls = [];
+                previewContainer.innerHTML = '';
+
+                if (!fileInput.files || fileInput.files.length === 0) return;
+
+                const files = Array.from(fileInput.files).slice(0, 4);
+                files.forEach((file, index) => {
+                    const url = URL.createObjectURL(file);
+                    previewUrls.push(url);
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = `Preview ${index + 1}`;
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '180px';
+                    img.style.borderRadius = '8px';
+                    img.style.objectFit = 'cover';
+                    img.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
+                    previewContainer.appendChild(img);
+                });
             });
 
             uploadBtn.addEventListener('click', async () => {
-                if (!fileInput.files || fileInput.files.length === 0) return alert('Select an image first');
+                if (!fileInput.files || fileInput.files.length !== 4) return alert('Please select exactly 4 images.');
                 const fd = new FormData();
-                fd.append('image', fileInput.files[0]);
+                Array.from(fileInput.files).forEach((file) => fd.append('image', file));
                 fd.append('topk', '3');
 
                 results.innerHTML = '<p>Uploading and computing results…</p>';
