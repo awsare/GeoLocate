@@ -6,7 +6,9 @@ and `data/index_meta.npz` used by the web app.
 Usage:
     python build_index.py
 """
+
 import os
+import sys
 import argparse
 import numpy as np
 import torch
@@ -15,13 +17,15 @@ from tqdm import tqdm
 from sklearn.neighbors import NearestNeighbors
 import joblib
 
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT_DIR)
+
 from dataset import GeoLocateDataset, build_transforms, validate_manifest, build_label_map
 from model import Net
 from config import MANIFEST_PATH, CHECKPOINT_PATH
 
 
 def extract_backbone_features(net, x, device):
-    # use net.backbone up to the avgpool layer (drop final fc)
     backbone = torch.nn.Sequential(*list(net.backbone.children())[:-1]).to(device)
     backbone.eval()
     with torch.no_grad():
@@ -30,7 +34,12 @@ def extract_backbone_features(net, x, device):
     return feat.cpu().numpy()
 
 
-def main(batch_size=64, out_index_path="data/nn_index.joblib", out_meta_path="data/index_meta.npz"):
+def main(batch_size=64, out_index_path=None, out_meta_path=None):
+    if out_index_path is None:
+        out_index_path = os.path.join(ROOT_DIR, "data", "nn_index.joblib")
+    if out_meta_path is None:
+        out_meta_path = os.path.join(ROOT_DIR, "data", "index_meta.npz")
+
     os.makedirs(os.path.dirname(out_index_path), exist_ok=True)
 
     manifest = validate_manifest(MANIFEST_PATH)
@@ -47,7 +56,6 @@ def main(batch_size=64, out_index_path="data/nn_index.joblib", out_meta_path="da
     filepaths = []
     sectors = []
 
-    # iterate by index so we can access dataset.rows for filepaths/sectors
     for start in tqdm(range(0, len(dataset), batch_size), desc="Extracting features"):
         end = min(start + batch_size, len(dataset))
         imgs = []
@@ -64,7 +72,6 @@ def main(batch_size=64, out_index_path="data/nn_index.joblib", out_meta_path="da
     X = np.vstack(features)
     print(f"Built embedding matrix: {X.shape}")
 
-    # fit NearestNeighbors (cosine) and persist
     nn = NearestNeighbors(n_neighbors=10, metric="cosine", algorithm="auto")
     nn.fit(X)
 
@@ -77,7 +84,7 @@ def main(batch_size=64, out_index_path="data/nn_index.joblib", out_meta_path="da
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--index-out", default="data/nn_index.joblib")
-    parser.add_argument("--meta-out", default="data/index_meta.npz")
+    parser.add_argument("--index-out", default=None)
+    parser.add_argument("--meta-out", default=None)
     args = parser.parse_args()
     main(batch_size=args.batch_size, out_index_path=args.index_out, out_meta_path=args.meta_out)

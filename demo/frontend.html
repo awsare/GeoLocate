@@ -240,11 +240,6 @@
                     const resp = await fetch('/predict', {method: 'POST', body: fd});
                     if (!resp.ok) throw new Error(await resp.text());
                     const data = await resp.json();
-                    // If server returns sector count, display it in header
-                    if (data.sector_count) {
-                        const sc = document.getElementById('sectorCount');
-                        if (sc) sc.textContent = data.sector_count;
-                    }
                     renderResults(data);
                 } catch (err) {
                     results.innerHTML = '<p style="color:crimson">Error: ' + err.message + '</p>';

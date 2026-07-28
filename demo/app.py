@@ -1,5 +1,6 @@
 import io
 import os
+import sys
 import base64
 import json
 import numpy as np
@@ -7,6 +8,9 @@ import torch
 from PIL import Image
 from flask import Flask, request, jsonify, send_from_directory
 import joblib
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT_DIR)
 
 from dataset import validate_manifest, build_label_map, build_transforms
 from model import Net
@@ -31,7 +35,11 @@ def extract_backbone_features(net, x, device):
     return feat.cpu().numpy()
 
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    static_url_path="/static",
+    static_folder=os.path.join(ROOT_DIR, "static"),
+)
 
 # Load manifest and label map
 manifest = validate_manifest(MANIFEST_PATH)
@@ -43,10 +51,9 @@ num_classes = len(label_map)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 transform = build_transforms("test")
 
+
 def load_checkpoint_with_fallback(checkpoint_path, num_classes, device):
-    # try default first, then common ResNet variants
     backbones = [None, "resnet18", "resnet34", "resnet50"]
-    # None means use whatever BACKBONE_NAME default the model picks
     last_exc = None
     for bk in backbones:
         try:
@@ -60,10 +67,10 @@ def load_checkpoint_with_fallback(checkpoint_path, num_classes, device):
             return candidate
         except Exception as exc:
             last_exc = exc
-            # try next backbone
             continue
-    # if we reach here, re-raise the last exception with context
-    raise RuntimeError(f"Failed to load checkpoint {checkpoint_path} with tried backbones: {backbones}. Last error: {last_exc}") from last_exc
+    raise RuntimeError(
+        f"Failed to load checkpoint {checkpoint_path} with tried backbones: {backbones}. Last error: {last_exc}"
+    ) from last_exc
 
 
 try:
@@ -74,8 +81,8 @@ except Exception as exc:
     ) from exc
 
 # Load NN index if present
-NN_INDEX_PATH = os.path.join("data", "nn_index.joblib")
-NN_META_PATH = os.path.join("data", "index_meta.npz")
+NN_INDEX_PATH = os.path.join(ROOT_DIR, "data", "nn_index.joblib")
+NN_META_PATH = os.path.join(ROOT_DIR, "data", "index_meta.npz")
 nn = None
 meta = None
 if os.path.exists(NN_INDEX_PATH) and os.path.exists(NN_META_PATH):
@@ -106,7 +113,6 @@ def predict():
 
     x = torch.stack(images).to(device)
 
-    # classifier predictions across all 4 images
     with torch.no_grad():
         logits = net(x)
         combined_logits = logits.mean(dim=0, keepdim=True)
@@ -118,7 +124,6 @@ def predict():
 
     response = {"predictions": predictions}
 
-    # nearest-neighbor results (if index exists)
     if nn is not None:
         feats = extract_backbone_features(net, x, device)
         query_feat = np.mean(feats, axis=0, keepdims=True)
@@ -141,7 +146,7 @@ def predict():
 
 @app.route("/")
 def index():
-    return send_from_directory('.', 'frontend.html')
+    return send_from_directory(os.path.dirname(__file__), "frontend.html")
 
 
 if __name__ == "__main__":
