@@ -29,22 +29,19 @@ python evaluate.py           # load the checkpoint and report test accuracy
 python smoke_test.py         # quick end-to-end pipeline check on tiny data slices
 ```
 
-## Website
-
-Project storytelling site lives in `website/` and is fully static.
-
-- Local preview:
+**To evaluate the pre-trained model without training:**
 
 ```bash
-cd website
-python -m http.server 8000
+python download_dataset.py   # download the dataset via kagglehub
+python prepare_dataset.py    # build data/manifest.csv
+python evaluate.py           # load checkpoints/sector_net.pth and report test accuracy
 ```
 
-- Open `http://localhost:8000` in your browser.
+The final model checkpoint is included in `checkpoints/sector_net.pth` and is ready to evaluate immediately after dataset preparation.
 
-- Deployment:
-  GitHub Actions workflow `.github/workflows/deploy-website.yml` publishes
-  the `website/` folder to GitHub Pages.
+## Website
+
+View the project storytelling site [here](https://awsare.github.io/GeoLocate/).
 
 ## Data flow
 
@@ -90,65 +87,25 @@ Config for each stage is sourced from `config.py`.
   phase 1 trains only the classifier head (frozen backbone), then phase 2
   fine-tunes the full network with a lower LR on the backbone and higher LR
   on the classifier head. Includes class-balancing options via weighted
-  cross-entropy (`USE_CLASS_WEIGHTS`) and optional minority oversampling
-  (`USE_WEIGHTED_SAMPLER`). Supports optional OneCycle learning-rate scheduling
-  (`USE_ONE_CYCLE_LR`) for both training phases. Selects the best checkpoint by validation metric
-  each epoch (`BEST_CHECKPOINT_METRIC`) and writes it to
-  `checkpoints/geolocate_net.pth`.
+  cross-entropy (`USE_CLASS_WEIGHTS`) and optional minority oversampling.
+  Selects the best checkpoint by validation metric each epoch and writes it to
+  `checkpoints/sector_net.pth`.
 
-- **`evaluate.py`** — Loads `checkpoints/geolocate_net.pth` and reports
+- **`evaluate.py`** — Loads `checkpoints/sector_net.pth` and reports
   overall and per-sector test accuracy for the test split.
 
 - **`smoke_test.py`** — Exercises the full pipeline (dataset → model →
   training step → checkpoint → eval) on a tiny data slice, to catch
   breakage quickly without a full training run.
 
-- **`exploration.ipynb`** — Dataset exploration of per-country image
-  counts and class imbalance.
+- **`demo/`** — Interactive demo app and utilities for inference.
+  - `app.py` — Inference service.
+  - `build_index.py` — Build search index for demo.
+  - `frontend.html` — Web interface for predictions.
 
 - **`data/`** — Gitignored except for `data/label_map.json`. The generated
   `manifest.csv` stays local because it contains machine-specific kagglehub
   cache paths. Images stay in the kagglehub cache, not in this repo.
 
-## Decisions
-
-This section tracks intentional project choices and why they were made.
-
-- **Prediction target is sector, not country**
-  The model predicts a geographic sector (from `sectors.py`) rather than a
-  specific country. This reduces label sparsity and keeps low-image countries
-  usable by grouping them with nearby countries.
-
-- **Model initialization is pretrained ResNet-34**
-  The backbone starts from ImageNet features (default), which improves data
-  efficiency versus training from scratch and helps minority sectors.
-
-- **Training uses a two-phase fine-tuning schedule**
-  Phase 1 trains only the classifier head, then phase 2 unfreezes the
-  backbone for end-to-end fine-tuning with differential learning rates. This
-  stabilizes optimization after swapping the classifier head.
-
-- **Checkpoint selection is validation-based, not last-epoch based**
-  At the end of each training epoch, validation overall/macro accuracy is
-  computed and the best model is saved to `CHECKPOINT_PATH` using
-  `BEST_CHECKPOINT_METRIC` from `config.py`. The final epoch model is also
-  saved separately to `LAST_CHECKPOINT_PATH` for debugging/comparison.
-  
-- **Split strategy is sector-stratified train/val/test**
-  Splits are assigned within each sector (controlled by `SPLIT_RATIOS` in
-  `config.py`) so minority sectors still appear in val/test and evaluation
-  remains meaningful across classes.
-
-- **Class imbalance is handled with weighted loss (default) and optional oversampling**
-  `train.py` computes class counts from the training split and applies
-  inverse-frequency class weights in `CrossEntropyLoss` by default
-  (`USE_CLASS_WEIGHTS` in `config.py`). Optional `WeightedRandomSampler`
-  (`USE_WEIGHTED_SAMPLER` in `config.py`) can further increase minority
-  exposure during training when rare sectors underperform.
-
-- **Optional distance-aware training term can improve geographic error**
-  Training can optionally add a centroid-distance penalty to cross-entropy:
-  `total_loss = CE + DISTANCE_LOSS_WEIGHT * distance_penalty`.
-  This is controlled by `USE_DISTANCE_LOSS`, `DISTANCE_LOSS_WEIGHT`, and
-  `DISTANCE_LOSS_TAU_MILES` in `config.py`. The penalty is designed to reduce
-  geographically severe mistakes while preserving sector classification.
+- **`website/`** — Static project documentation site with experiment results
+  and model evolution narrative. Deployable to GitHub Pages.
