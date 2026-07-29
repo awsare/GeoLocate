@@ -233,8 +233,8 @@ function renderProcessCards() {
       <p>A distance penalty was added to discourage geographically severe classification mistakes.</p>
     </article>
     <article class="process-card reveal">
-      <h3>6. Selection Rule</h3>
-      <p>The final pick balanced test accuracy, distance score, and model efficiency.</p>
+      <h3>6. Validation-based Selection</h3>
+      <p>Final evaluation uses the checkpoint with the strongest validation score to reduce overfitting and preserve generalization.</p>
     </article>
   `;
 }

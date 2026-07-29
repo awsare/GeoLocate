@@ -4,7 +4,7 @@
     "dataset": "GeoGuessr images 50k",
     "classes": 18,
     "finalExperimentId": "resnet34-dist01",
-    "finalModel": "Sectors + ResNet34 + two-stage training + class weights + distance penalty (0.1)",
+    "finalModel": "Sectors + ResNet34 + two-stage training + sector weights + distance penalty (0.1)",
     "headline": {
       "testAccuracy": 60.8
     },
@@ -77,7 +77,7 @@
     {
       "id": "resnet18-class-weights",
       "order": 4,
-      "name": "Sectors + ResNet18 + two-stage training + class weights",
+      "name": "Sectors + ResNet18 + two-stage training + sector weights",
       "backbone": "ResNet18",
       "testAccuracy": 51,
       "distanceScore": 0.54,
@@ -86,7 +86,7 @@
     {
       "id": "resnet18-weighted-sampler",
       "order": 5,
-      "name": "Sectors + ResNet18 + two-stage training + weighted sampler",
+      "name": "Sectors + ResNet18 + two-stage training + weighted sampling",
       "backbone": "ResNet18",
       "testAccuracy": 49,
       "distanceScore": 0.5,
@@ -95,7 +95,7 @@
     {
       "id": "resnet18-onecycle",
       "order": 6,
-      "name": "Sectors + ResNet18 + two-stage training + class weights + one cycle LR",
+      "name": "Sectors + ResNet18 + two-stage training + sector weights + one cycle LR",
       "backbone": "ResNet18",
       "testAccuracy": 50,
       "distanceScore": 0.51,
@@ -104,7 +104,7 @@
     {
       "id": "resnet34-class-weights",
       "order": 7,
-      "name": "Sectors + ResNet34 + two-stage training + class weights",
+      "name": "Sectors + ResNet34 + two-stage training + sector weights",
       "backbone": "ResNet34",
       "testAccuracy": 60,
       "distanceScore": 0.62,
@@ -113,7 +113,7 @@
     {
       "id": "resnet34-dist01",
       "order": 8,
-      "name": "Sectors + ResNet34 + two-stage training + class weights + distance penalty (0.1)",
+      "name": "Sectors + ResNet34 + two-stage training + sector weights + distance penalty (0.1)",
       "backbone": "ResNet34",
       "testAccuracy": 61,
       "distanceScore": 0.6527,
@@ -122,7 +122,7 @@
     {
       "id": "resnet34-dist02",
       "order": 9,
-      "name": "Sectors + ResNet34 + two-stage training + class weights + distance penalty (0.2)",
+      "name": "Sectors + ResNet34 + two-stage training + sector weights + distance penalty (0.2)",
       "backbone": "ResNet34",
       "testAccuracy": 60,
       "distanceScore": 0.65,
@@ -131,7 +131,7 @@
     {
       "id": "resnet50-dist01-onecycle",
       "order": 10,
-      "name": "Sectors + ResNet50 + two-stage training + class weights + distance penalty (0.1) + one cycle LR",
+      "name": "Sectors + ResNet50 + two-stage training + sector weights + distance penalty (0.1) + one cycle LR",
       "backbone": "ResNet50",
       "testAccuracy": 58,
       "distanceScore": 0.61,

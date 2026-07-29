@@ -34,6 +34,13 @@
       </section>
 
       <section class="section">
+        <h2>Image Preprocessing</h2>
+        <p>
+          All images were resized to 224x224 pixels and normalized using ImageNet statistics for compatibility with transfer learning backbones. Data augmentation during training included random rotations, crops, and color jitter to improve robustness across varying lighting and composition conditions. Test images were center-cropped without augmentation to ensure fair evaluation.
+        </p>
+      </section>
+
+      <section class="section">
         <h2>Model Structure Walkthrough</h2>
         <p>
           Each row is one tested structure from baseline to the final selected model (test structure 8).
@@ -49,6 +56,13 @@
         </p>
         <div class="final-panel" data-final-model></div>
         <div class="section-inner" data-final-performance></div>
+      </section>
+
+      <section id="next-steps" class="section reveal">
+        <h2>Next Steps</h2>
+        <p>
+          This model achieved 60% accuracy using vision alone, learning pure geographic patterns from landscape and architecture. The next steps for improvement will be adding explicit location cues like street signs, license plates, and vehicles that humans use to identify places. Combining these signals with the visual foundation should drive substantial improvements across both accuracy and geographic precision.
+        </p>
       </section>
 
     </main>
